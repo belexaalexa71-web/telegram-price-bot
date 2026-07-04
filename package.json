@@ -1,7 +1,7 @@
 {
   "name": "trintope-telegram-bot",
-  "version": "2.0.0",
-  "description": "Official TRINTOPE Telegram bot",
+  "version": "3.0.0",
+  "description": "Official TRINTOPE Telegram bot with clean editable menu",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
