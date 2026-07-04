@@ -1,4 +1,4 @@
-const TelegramBot = require('node-telegram-bot-api');
+const { Telegraf, Markup } = require('telegraf');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) {
@@ -6,158 +6,166 @@ if (!BOT_TOKEN) {
   process.exit(1);
 }
 
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://ea32b09e.trintope-universe.pages.dev/';
-const X_URL = process.env.X_URL || 'https://x.com/AndrejK40133234';
-const PROJECT_STATUS = process.env.PROJECT_STATUS || 'Building';
+const bot = new Telegraf(BOT_TOKEN);
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const WEBSITE_URL = 'https://ea32b09e.trintope-universe.pages.dev/';
+const X_URL = 'https://x.com/AndrejK40133234';
+const TELEGRAM_GROUP_URL = process.env.TELEGRAM_GROUP_URL || '';
+const TELEGRAM_CHANNEL_URL = process.env.TELEGRAM_CHANNEL_URL || '';
 
-// Keeps only one active bot menu message per chat.
-// For a bigger bot later, we can replace this memory store with a database.
-const lastBotMessageByChat = new Map();
+const lastBotMessages = new Map();
 
-const mainKeyboard = {
-  inline_keyboard: [
-    [
-      { text: '💰 Price', callback_data: 'price' },
-      { text: '📈 Chart', callback_data: 'chart' }
-    ],
-    [
-      { text: '🛒 Buy', callback_data: 'buy' },
-      { text: '🌐 Website', url: WEBSITE_URL }
-    ],
-    [
-      { text: '🐦 X', url: X_URL },
-      { text: '📢 News', callback_data: 'news' }
-    ],
-    [
-      { text: '💎 Tokenomics', callback_data: 'tokenomics' },
-      { text: '🗺 Roadmap', callback_data: 'roadmap' }
-    ],
-    [
-      { text: '👥 Community', callback_data: 'community' },
-      { text: '❓ Help', callback_data: 'help' }
-    ]
-  ]
-};
+function mainMenu() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('📊 Market', 'market'), Markup.button.callback('🌍 Community', 'community')],
+    [Markup.button.callback('📢 News', 'news'), Markup.button.callback('⚙️ More', 'more')],
+    [Markup.button.url('🌐 Website', WEBSITE_URL), Markup.button.url('🐦 X', X_URL)]
+  ]);
+}
 
-const backKeyboard = {
-  inline_keyboard: [[{ text: '⬅️ Back to menu', callback_data: 'home' }]]
-};
+function backMenu() {
+  return Markup.inlineKeyboard([[Markup.button.callback('⬅️ Back to Home', 'home')]]);
+}
 
-function homeText() {
-  return `🚀 *Welcome to TRINTOPE*\n\nOfficial Project Bot\n\n🟢 Status: *${PROJECT_STATUS}*\n\nChoose an option below 👇`;
+function marketMenu() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('💰 Price', 'price'), Markup.button.callback('📈 Chart', 'chart')],
+    [Markup.button.callback('🛒 Buy', 'buy')],
+    [Markup.button.callback('⬅️ Back to Home', 'home')]
+  ]);
+}
+
+function communityMenu() {
+  const rows = [
+    [Markup.button.url('🌐 Website', WEBSITE_URL), Markup.button.url('🐦 X', X_URL)]
+  ];
+  if (TELEGRAM_GROUP_URL) rows.push([Markup.button.url('💬 Telegram Group', TELEGRAM_GROUP_URL)]);
+  if (TELEGRAM_CHANNEL_URL) rows.push([Markup.button.url('📢 Telegram Channel', TELEGRAM_CHANNEL_URL)]);
+  rows.push([Markup.button.callback('⬅️ Back to Home', 'home')]);
+  return Markup.inlineKeyboard(rows);
+}
+
+function moreMenu() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('💎 Tokenomics', 'tokenomics'), Markup.button.callback('🗺 Roadmap', 'roadmap')],
+    [Markup.button.callback('❓ FAQ', 'faq'), Markup.button.callback('📞 Support', 'support')],
+    [Markup.button.callback('📜 Whitepaper', 'whitepaper')],
+    [Markup.button.callback('⬅️ Back to Home', 'home')]
+  ]);
 }
 
 const pages = {
-  home: () => ({ text: homeText(), keyboard: mainKeyboard }),
-  price: () => ({
-    text: '💰 *Price*\n\nToken is not live yet.\n\nPrice tracking will become available after launch.',
-    keyboard: backKeyboard
-  }),
-  chart: () => ({
-    text: '📈 *Chart*\n\nChart will be available after launch.',
-    keyboard: backKeyboard
-  }),
-  buy: () => ({
-    text: '🛒 *Buy TRINTOPE*\n\nTrading is not available yet.\n\nStay tuned for the official launch.',
-    keyboard: backKeyboard
-  }),
-  news: () => ({
-    text: '📢 *News*\n\nNo announcements yet.\n\nFollow X for updates.',
-    keyboard: backKeyboard
-  }),
-  tokenomics: () => ({
-    text: '💎 *Tokenomics*\n\nComing soon.\n\nTokenomics will be published before launch.',
-    keyboard: backKeyboard
-  }),
-  roadmap: () => ({
-    text: '🗺 *Roadmap*\n\n✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing\n⬜ CEX Listing',
-    keyboard: backKeyboard
-  }),
-  community: () => ({
-    text: `👥 *Community*\n\n🌐 Website:\n${WEBSITE_URL}\n\n🐦 X:\n${X_URL}\n\nTelegram group and channel links will be added soon.`,
-    keyboard: backKeyboard
-  }),
-  help: () => ({
-    text: '❓ *Help*\n\nUse this bot to access official TRINTOPE resources:\n\n• Price\n• Chart\n• Buy link\n• Website\n• X\n• News\n• Roadmap\n• Tokenomics\n\nOnly trust links shown inside this official bot.',
-    keyboard: backKeyboard
-  })
+  home: {
+    text: `🚀 TRINTOPE\n\nOfficial Project Bot\n\n🟢 Status: Building\n\nChoose an option below 👇`,
+    keyboard: mainMenu
+  },
+  market: {
+    text: `📊 Market\n\nToken market tools will be available here.\n\nCurrent status: Token is not live yet.`,
+    keyboard: marketMenu
+  },
+  price: {
+    text: `💰 Price\n\nToken is not live yet.\n\nPrice tracking will become available after launch.`,
+    keyboard: backMenu
+  },
+  chart: {
+    text: `📈 Chart\n\nChart will be available after launch.`,
+    keyboard: backMenu
+  },
+  buy: {
+    text: `🛒 Buy TRINTOPE\n\nTrading is not available yet.\n\nThe official buy link will be added after launch.`,
+    keyboard: backMenu
+  },
+  community: {
+    text: `🌍 Community\n\nOfficial TRINTOPE links.\n\nAlways use only official links to avoid scams.`,
+    keyboard: communityMenu
+  },
+  news: {
+    text: `📢 News\n\nNo announcements yet.\n\nFollow X for the latest project updates.`,
+    keyboard: backMenu
+  },
+  more: {
+    text: `⚙️ More\n\nProject information and support.`,
+    keyboard: moreMenu
+  },
+  tokenomics: {
+    text: `💎 Tokenomics\n\nComing soon.\n\nTokenomics will be published before launch.`,
+    keyboard: backMenu
+  },
+  roadmap: {
+    text: `🗺 Roadmap\n\n✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing\n⬜ CEX Listing`,
+    keyboard: backMenu
+  },
+  faq: {
+    text: `❓ FAQ\n\nWhat is TRINTOPE?\nA community-driven Web3 project.\n\nWhen will the token launch?\nThe launch date will be announced soon.\n\nWhere can I buy it?\nThe official buy link will be available after launch.`,
+    keyboard: backMenu
+  },
+  support: {
+    text: `📞 Support\n\nNeed help?\n\nContact us through the official X account.`,
+    keyboard: backMenu
+  },
+  whitepaper: {
+    text: `📜 Whitepaper\n\nComing soon.\n\nThe official document will be added here when it is ready.`,
+    keyboard: backMenu
+  }
 };
 
-async function deletePreviousBotMessage(chatId) {
-  const lastMessageId = lastBotMessageByChat.get(chatId);
-  if (!lastMessageId) return;
-
+async function deleteUserCommand(ctx) {
   try {
-    await bot.deleteMessage(chatId, lastMessageId);
-  } catch (error) {
-    // It is okay if Telegram does not allow deleting an older message.
-  }
-}
-
-async function deleteUserCommand(msg) {
-  // In groups/supergroups this requires the bot to be admin with delete message permission.
-  try {
-    if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
-      await bot.deleteMessage(msg.chat.id, msg.message_id);
+    if (ctx.chat && ctx.message) {
+      await ctx.deleteMessage(ctx.message.message_id);
     }
-  } catch (error) {
-    // If no admin rights, the command stays visible. The bot still works.
+  } catch (e) {
+    // Bot needs admin permission to delete messages in groups.
   }
 }
 
-async function sendCleanPage(chatId, pageName, msg = null) {
-  const page = pages[pageName] ? pages[pageName]() : pages.home();
-
-  await deletePreviousBotMessage(chatId);
-  if (msg) await deleteUserCommand(msg);
-
-  const sent = await bot.sendMessage(chatId, page.text, {
-    parse_mode: 'Markdown',
-    reply_markup: page.keyboard,
-    disable_web_page_preview: true
-  });
-
-  lastBotMessageByChat.set(chatId, sent.message_id);
+async function sendCleanHome(ctx) {
+  const chatId = ctx.chat.id;
+  const oldId = lastBotMessages.get(chatId);
+  if (oldId) {
+    try { await ctx.telegram.deleteMessage(chatId, oldId); } catch (e) {}
+  }
+  const sent = await ctx.reply(pages.home.text, pages.home.keyboard());
+  lastBotMessages.set(chatId, sent.message_id);
 }
 
-async function editPage(callbackQuery, pageName) {
-  const chatId = callbackQuery.message.chat.id;
-  const messageId = callbackQuery.message.message_id;
-  const page = pages[pageName] ? pages[pageName]() : pages.home();
+bot.start(async (ctx) => {
+  await deleteUserCommand(ctx);
+  await sendCleanHome(ctx);
+});
 
+bot.help(async (ctx) => {
+  await deleteUserCommand(ctx);
+  const text = `❓ Help\n\nUse /start to open the TRINTOPE menu.\n\nAll main sections are available through buttons, so the chat stays clean.`;
+  const sent = await ctx.reply(text, backMenu());
+  lastBotMessages.set(ctx.chat.id, sent.message_id);
+});
+
+bot.command(['price', 'chart', 'buy', 'links'], async (ctx) => {
+  await deleteUserCommand(ctx);
+  await sendCleanHome(ctx);
+});
+
+bot.action(Object.keys(pages), async (ctx) => {
+  const key = ctx.match[0];
+  const page = pages[key];
   try {
-    await bot.editMessageText(page.text, {
-      chat_id: chatId,
-      message_id: messageId,
-      parse_mode: 'Markdown',
-      reply_markup: page.keyboard,
-      disable_web_page_preview: true
-    });
-    lastBotMessageByChat.set(chatId, messageId);
-  } catch (error) {
-    // If Telegram cannot edit, send a clean new page.
-    await sendCleanPage(chatId, pageName);
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(page.text, page.keyboard());
+  } catch (e) {
+    try {
+      const sent = await ctx.reply(page.text, page.keyboard());
+      lastBotMessages.set(ctx.chat.id, sent.message_id);
+    } catch (err) {
+      console.error(err);
+    }
   }
-
-  await bot.answerCallbackQuery(callbackQuery.id);
-}
-
-bot.onText(/\/start/, (msg) => sendCleanPage(msg.chat.id, 'home', msg));
-bot.onText(/\/help/, (msg) => sendCleanPage(msg.chat.id, 'help', msg));
-bot.onText(/\/price/, (msg) => sendCleanPage(msg.chat.id, 'price', msg));
-bot.onText(/\/chart/, (msg) => sendCleanPage(msg.chat.id, 'chart', msg));
-bot.onText(/\/buy/, (msg) => sendCleanPage(msg.chat.id, 'buy', msg));
-bot.onText(/\/links/, (msg) => sendCleanPage(msg.chat.id, 'community', msg));
-
-bot.on('callback_query', (callbackQuery) => {
-  const pageName = callbackQuery.data || 'home';
-  editPage(callbackQuery, pageName);
 });
 
-bot.on('polling_error', (error) => {
-  console.error('Polling error:', error.message);
-});
+bot.catch((err) => console.error('Bot error:', err));
 
-console.log('TRINTOPE bot v3 is running.');
+bot.launch();
+console.log('TRINTOPE bot is running.');
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));

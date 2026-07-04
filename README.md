@@ -1,34 +1,26 @@
-# TRINTOPE Telegram Bot v3
+# TRINTOPE Bot v4
 
-Clean official Telegram bot for the TRINTOPE project.
+Official Telegram bot for TRINTOPE.
 
-## What is new
+## Features
 
-- One clean editable menu
-- Buttons do not create new messages
-- When a user presses a button, the same bot message changes
-- When a user sends `/start`, `/price`, `/chart`, `/buy`, `/links`, or `/help`, the previous bot message is removed
-- In groups, user command messages can also be deleted if the bot is admin with permission to delete messages
+- Clean one-message interface
+- Inline buttons instead of many commands
+- Home, Market, Community, News, Roadmap, FAQ, Support
+- Website and X buttons
+- Future-ready placeholders for price, chart, buy link and tokenomics
 
-## Environment variables
+## Railway variable
 
 Required:
 
-```
-BOT_TOKEN=your_token_from_BotFather
-```
+BOT_TOKEN=your_bot_token_from_BotFather
 
 Optional:
 
-```
-WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/
-X_URL=https://x.com/AndrejK40133234
-PROJECT_STATUS=Building
-```
+TELEGRAM_GROUP_URL=https://t.me/yourgroup
+TELEGRAM_CHANNEL_URL=https://t.me/yourchannel
 
-## Run
+## Start
 
-```
-npm install
 npm start
-```
