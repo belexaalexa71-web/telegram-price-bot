@@ -1,7 +1,7 @@
 {
-  "name": "token-price-telegram-bot",
-  "version": "1.0.0",
-  "description": "Simple Telegram bot for a crypto project: start/about/links/price placeholders.",
+  "name": "trintope-telegram-bot",
+  "version": "2.0.0",
+  "description": "Official TRINTOPE Telegram bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"

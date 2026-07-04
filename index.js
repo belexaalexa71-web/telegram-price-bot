@@ -1,84 +1,95 @@
 const TelegramBot = require('node-telegram-bot-api');
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
+const token = process.env.BOT_TOKEN;
 
-if (!BOT_TOKEN) {
-  console.error('Missing BOT_TOKEN. Add it as an environment variable.');
+if (!token) {
+  console.error('BOT_TOKEN is missing. Add it in Railway Variables.');
   process.exit(1);
 }
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const bot = new TelegramBot(token, { polling: true });
 
-const PROJECT_NAME = process.env.PROJECT_NAME || 'My Token';
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://your-website.com';
-const X_URL = process.env.X_URL || 'https://x.com/your_project';
-const CHART_URL = process.env.CHART_URL || 'Chart link will be added after launch.';
+const PROJECT_NAME = 'TRINTOPE';
+const WEBSITE_URL = 'https://ea32b09e.trintope-universe.pages.dev/';
+const X_URL = 'https://x.com/AndrejK40133234';
 
-function sendSafe(chatId, text, options = {}) {
-  return bot.sendMessage(chatId, text, {
-    parse_mode: 'HTML',
-    disable_web_page_preview: true,
-    ...options,
-  });
+const mainMenu = {
+  reply_markup: {
+    inline_keyboard: [
+      [
+        { text: '💰 Price', callback_data: 'price' },
+        { text: '📈 Chart', callback_data: 'chart' }
+      ],
+      [
+        { text: '🛒 Buy', callback_data: 'buy' },
+        { text: '🌐 Website', url: WEBSITE_URL }
+      ],
+      [
+        { text: '🐦 X', url: X_URL },
+        { text: '❓ Help', callback_data: 'help' }
+      ]
+    ]
+  },
+  parse_mode: 'HTML'
+};
+
+function homeText() {
+  return `🚀 <b>Welcome to ${PROJECT_NAME}</b>\n\nOfficial Project Bot\n\n🟢 <b>Status:</b> Building\n\nWelcome to the official ${PROJECT_NAME} ecosystem.\n\nChoose an option below 👇`;
+}
+
+function sendHome(chatId) {
+  return bot.sendMessage(chatId, homeText(), mainMenu);
 }
 
 bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `👋 Welcome to <b>${PROJECT_NAME}</b>!\n\n` +
-    `Use these commands:\n` +
-    `/about — About the project\n` +
-    `/links — Official links\n` +
-    `/price — Token price\n` +
-    `/chart — Token chart\n` +
-    `/help — Help`
-  );
+  sendHome(msg.chat.id);
 });
 
 bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `🤖 <b>${PROJECT_NAME} Bot Commands</b>\n\n` +
-    `/start — Start bot\n` +
-    `/about — About the project\n` +
-    `/links — Official links\n` +
-    `/price — Token price\n` +
-    `/chart — Token chart`
-  );
-});
-
-bot.onText(/\/about/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `ℹ️ <b>About ${PROJECT_NAME}</b>\n\n` +
-    `This is the official Telegram bot for our project.\n` +
-    `Token price, chart and updates will be added after launch.`
-  );
-});
-
-bot.onText(/\/links/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `🔗 <b>Official Links</b>\n\n` +
-    `Website: ${WEBSITE_URL}\n` +
-    `X/Twitter: ${X_URL}`
-  );
+  bot.sendMessage(msg.chat.id, `❓ <b>Help</b>\n\nUse this bot to access official ${PROJECT_NAME} resources:\n\n• 💰 Price\n• 📈 Chart\n• 🛒 Buy link\n• 🌐 Website\n• 🐦 X\n\nPrice, chart and buy links will become available after launch.`, mainMenu);
 });
 
 bot.onText(/\/price/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `💰 <b>${PROJECT_NAME} Price</b>\n\n` +
-    `Price tracking will be connected after the token is launched and trading starts.`
-  );
+  bot.sendMessage(msg.chat.id, '💰 <b>Price</b>\n\nToken is not live yet.\n\nPrice tracking will become available after launch.', mainMenu);
 });
 
 bot.onText(/\/chart/, (msg) => {
-  const chatId = msg.chat.id;
-  sendSafe(chatId,
-    `📈 <b>${PROJECT_NAME} Chart</b>\n\n` +
-    `${CHART_URL}`
-  );
+  bot.sendMessage(msg.chat.id, '📈 <b>Chart</b>\n\nChart will be available after launch.', mainMenu);
+});
+
+bot.onText(/\/buy/, (msg) => {
+  bot.sendMessage(msg.chat.id, '🛒 <b>Buy</b>\n\nTrading is not available yet.\n\nStay tuned for the official launch.', mainMenu);
+});
+
+bot.onText(/\/links/, (msg) => {
+  bot.sendMessage(msg.chat.id, `🔗 <b>Official Links</b>\n\n🌐 Website:\n${WEBSITE_URL}\n\n🐦 X:\n${X_URL}\n\nAlways use only official links.`, mainMenu);
+});
+
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  try {
+    await bot.answerCallbackQuery(query.id);
+
+    if (data === 'price') {
+      return bot.sendMessage(chatId, '💰 <b>Price</b>\n\nToken is not live yet.\n\nPrice tracking will become available after launch.', mainMenu);
+    }
+
+    if (data === 'chart') {
+      return bot.sendMessage(chatId, '📈 <b>Chart</b>\n\nChart will be available after launch.', mainMenu);
+    }
+
+    if (data === 'buy') {
+      return bot.sendMessage(chatId, '🛒 <b>Buy</b>\n\nTrading is not available yet.\n\nStay tuned for the official launch.', mainMenu);
+    }
+
+    if (data === 'help') {
+      return bot.sendMessage(chatId, `❓ <b>Help</b>\n\nUse this bot to access official ${PROJECT_NAME} resources:\n\n• 💰 Price\n• 📈 Chart\n• 🛒 Buy link\n• 🌐 Website\n• 🐦 X\n\nPrice, chart and buy links will become available after launch.`, mainMenu);
+    }
+  } catch (error) {
+    console.error('Callback error:', error.message);
+  }
 });
 
 bot.on('polling_error', (error) => {
