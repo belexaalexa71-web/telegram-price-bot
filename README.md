@@ -1,62 +1,34 @@
-# TRINTOPE Telegram Bot v6
-
-Clean official Telegram bot for TRINTOPE.
-
-## Features
-
-- One-message navigation: buttons edit the same message.
-- Clean chat: old bot menu is deleted when a new one opens.
-- Auto-cleanup: menu disappears after inactivity.
-- Close button.
-- Prepared sections: Market, Community, Project, More.
-- Prepared admin panel placeholder.
-- Deletes user commands in groups if the bot has Delete messages permission.
+# TRINTOPE Bot — Secure Admin Panel
 
 ## Railway variables
 
 Required:
 
-```env
-BOT_TOKEN=your_token_from_BotFather
-```
+- `BOT_TOKEN` — token from BotFather
+- `ADMIN_IDS` — your Telegram ID. Example: `123456789`
 
-Recommended:
+To get your Telegram ID, send `/id` to the bot after deployment.
 
-```env
-PROJECT_NAME=TRINTOPE
-WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/
-X_URL=https://x.com/AndrejK40133234
-MENU_TTL_MS=120000
-```
+## Admin security
 
-Optional for later:
+- Admin panel is visible only to IDs listed in `ADMIN_IDS`.
+- Admin commands work only in private chat.
+- Group commands can be deleted if the bot has admin permission: Delete messages.
 
-```env
-TELEGRAM_URL=
-CHART_URL=
-BUY_URL=
-ADMIN_ID=
-```
+## Admin commands
 
-## BotFather commands
+Use only in private chat with bot:
 
-Recommended minimal commands:
+- `/setstatus Building`
+- `/setwebsite https://example.com`
+- `/setx https://x.com/example`
+- `/settelegram https://t.me/example`
+- `/setnews Your announcement`
+- `/setroadmap Your roadmap`
+- `/settokenomics Your tokenomics`
 
-```text
-start - Open menu
-help - Help
-```
+## Public commands
 
-## Group permissions
-
-To delete user commands in a group:
-
-1. Open the Telegram group.
-2. Open group info.
-3. Administrators.
-4. Add Admin.
-5. Select the bot.
-6. Enable Delete messages.
-7. Save.
-
-The bot does not need ban/admin rights unless you want moderation.
+- `/start`
+- `/help`
+- `/id`
