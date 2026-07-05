@@ -1,19 +1,23 @@
 import { Telegraf } from 'telegraf';
 import { config } from './config.js';
 import { startCommand } from './commands/start.js';
-import { idCommand, setupOwner } from './commands/owner.js';
-import { groupCommand } from './handlers/groups.js';
-import { onCallback } from './handlers/callbacks.js';
-import { onText } from './handlers/messages.js';
+import { idCommand, setupOwnerCommand } from './commands/owner.js';
+import { callbackHandler } from './handlers/callback.js';
+import { textHandler } from './handlers/messages.js';
+
 const bot = new Telegraf(config.botToken);
-bot.start(async ctx => ctx.chat.type === 'private' ? startCommand(ctx) : groupCommand(ctx));
-bot.command('help', async ctx => ctx.chat.type === 'private' ? startCommand(ctx) : groupCommand(ctx));
+
+bot.start(startCommand);
+bot.command('help', startCommand);
 bot.command('id', idCommand);
-bot.command('setup_owner', setupOwner);
-bot.on('callback_query', onCallback);
-bot.on('text', onText);
-bot.catch((err) => console.error('BOT_ERROR', err));
+bot.command('setup_owner', setupOwnerCommand);
+bot.on('callback_query', callbackHandler);
+bot.on('text', textHandler);
+
+bot.catch((err) => console.error('Bot error:', err));
+
 bot.launch();
-console.log('TRINTOPE Bot running');
+console.log('TRINTOPE Bot started');
+
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
