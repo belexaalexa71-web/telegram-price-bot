@@ -1,163 +1,300 @@
-import { Telegraf, Markup } from 'telegraf';
-import fs from 'fs';
+const TelegramBot = require('node-telegram-bot-api');
+const fs = require('fs');
+const path = require('path');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const OWNER_SETUP_CODE = process.env.OWNER_SETUP_CODE || '';
 const ADMIN_IDS_ENV = process.env.ADMIN_IDS || '';
-const BOT_USERNAME = process.env.BOT_USERNAME || '';
-const DATA_FILE = './data.json';
+const AUTO_DELETE_MS = Number(process.env.AUTO_DELETE_MS || 10 * 60 * 1000);
 
 if (!BOT_TOKEN) {
-  console.error('BOT_TOKEN is missing');
+  console.error('BOT_TOKEN is required');
   process.exit(1);
 }
 
-const bot = new Telegraf(BOT_TOKEN);
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const DATA_FILE = path.join(__dirname, 'data.json');
+let botUsername = '';
 
 const defaultData = {
-  ownerIds: ADMIN_IDS_ENV.split(',').map(x => x.trim()).filter(Boolean),
+  ownerIds: [],
+  admins: [],
   users: {},
   settings: {
+    projectName: 'TRINTOPE',
     status: 'Building',
     website: 'https://ea32b09e.trintope-universe.pages.dev/',
     x: 'https://x.com/AndrejK40133234',
-    telegramGroup: '',
-    telegramChannel: '',
-    welcome: '🚀 Welcome to TRINTOPE\n\nOfficial project bot.\n\nChoose an option below.',
-    news: 'No announcements yet. Follow official channels for updates.',
+    telegram: '',
+    news: 'No announcements yet. Follow official links for updates.',
     roadmap: '✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing',
     tokenomics: 'Coming soon. Tokenomics will be published before launch.',
-    faq: 'What is TRINTOPE?\nA community-driven Web3 project.\n\nWhen launch?\nLaunch date will be announced soon.',
-    support: 'Need help? Contact us via X.',
-    priceText: 'Token is not live yet. Price tracking will become available after launch.',
-    chartUrl: '',
-    buyUrl: ''
+    faq: 'Q: What is TRINTOPE?\nA: A community-driven Web3 project.\n\nQ: When launch?\nA: Launch date will be announced soon.',
+    welcome: 'Official Project Assistant'
   },
-  pending: {},
   logs: []
 };
 
 function loadData() {
   try {
-    if (fs.existsSync(DATA_FILE)) return { ...defaultData, ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) };
-  } catch (e) { console.error('Load data error:', e); }
-  return structuredClone(defaultData);
+    if (fs.existsSync(DATA_FILE)) {
+      const saved = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+      return merge(defaultData, saved);
+    }
+  } catch (e) {
+    console.error('Cannot read data.json:', e.message);
+  }
+  return JSON.parse(JSON.stringify(defaultData));
 }
+
+function merge(base, saved) {
+  const out = Array.isArray(base) ? [...base] : { ...base };
+  for (const [k, v] of Object.entries(saved || {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && base[k]) out[k] = merge(base[k], v);
+    else out[k] = v;
+  }
+  return out;
+}
+
 let data = loadData();
-function saveData() { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); }
-function log(userId, action) { data.logs.unshift({ time: new Date().toISOString(), userId, action }); data.logs = data.logs.slice(0, 50); saveData(); }
-function isOwner(id) { return data.ownerIds.includes(String(id)); }
-function isPrivate(ctx) { return ctx.chat?.type === 'private'; }
-function trackUser(ctx) {
-  if (!ctx.from) return;
-  data.users[String(ctx.from.id)] = { id: ctx.from.id, username: ctx.from.username || '', firstName: ctx.from.first_name || '', lastSeen: new Date().toISOString() };
+for (const id of ADMIN_IDS_ENV.split(',').map(x => x.trim()).filter(Boolean)) {
+  const n = Number(id);
+  if (Number.isFinite(n) && !data.ownerIds.includes(n)) data.ownerIds.push(n);
+}
+saveData();
+
+function saveData() {
+  try { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); }
+  catch (e) { console.error('Cannot write data.json:', e.message); }
+}
+
+function logAction(userId, action) {
+  data.logs.unshift({ time: new Date().toISOString(), userId, action });
+  data.logs = data.logs.slice(0, 50);
   saveData();
 }
-async function safeDelete(ctx, messageId) { try { await ctx.deleteMessage(messageId); } catch {} }
-async function cleanGroupCommand(ctx) {
-  if (ctx.message?.message_id) await safeDelete(ctx, ctx.message.message_id);
-  const username = BOT_USERNAME || (ctx.botInfo?.username ? ctx.botInfo.username : '');
-  const url = username ? `https://t.me/${username}` : undefined;
-  try {
-    const msg = await ctx.reply('🔒 Open the official TRINTOPE bot in private chat.', url ? Markup.inlineKeyboard([[Markup.button.url('Open Bot', url)]]) : undefined);
-    setTimeout(() => safeDelete(ctx, msg.message_id), 12000);
-  } catch {}
+
+function isPrivate(msgOrQuery) {
+  const chat = msgOrQuery.message ? msgOrQuery.message.chat : msgOrQuery.chat;
+  return chat && chat.type === 'private';
 }
-function backClose(back='home') { return [Markup.button.callback('⬅ Back', back), Markup.button.callback('❌ Close', 'close')]; }
-function homeKeyboard(ctx) {
+
+function isAdminId(id) {
+  return data.ownerIds.includes(Number(id)) || data.admins.includes(Number(id));
+}
+
+function trackUser(user) {
+  if (!user || !user.id) return;
+  data.users[user.id] = {
+    id: user.id,
+    username: user.username || '',
+    first_name: user.first_name || '',
+    last_seen: new Date().toISOString()
+  };
+  saveData();
+}
+
+async function safeDelete(chatId, messageId) {
+  try { await bot.deleteMessage(chatId, messageId); } catch (_) {}
+}
+
+const session = new Map();
+const timers = new Map();
+const editState = new Map();
+
+function statusIcon() {
+  const s = data.settings.status.toLowerCase();
+  if (s.includes('live')) return '🟢';
+  if (s.includes('presale')) return '🟡';
+  return '🔵';
+}
+
+function inline(rows) { return { reply_markup: { inline_keyboard: rows } }; }
+function urlButton(text, url) { return url ? { text, url } : { text, callback_data: 'missing_link' }; }
+
+function homeText(userId) {
+  const adminLine = isAdminId(userId) ? '\n\n🔒 Owner mode enabled.' : '';
+  return `🚀 ${data.settings.projectName}\n\n${data.settings.welcome}\n\n${statusIcon()} Status: ${data.settings.status}\n\nChoose an option below.${adminLine}`;
+}
+
+function homeKb(userId) {
   const rows = [
-    [Markup.button.callback('📊 Market', 'market'), Markup.button.callback('📚 Project', 'project')],
-    [Markup.button.callback('🌍 Community', 'community'), Markup.button.callback('❓ FAQ', 'faq')],
-    [Markup.button.callback('📞 Support', 'support'), Markup.button.callback('❌ Close', 'close')]
+    [{ text: '📊 Market', callback_data: 'market' }, { text: '🌍 Community', callback_data: 'community' }],
+    [{ text: '📚 Project', callback_data: 'project' }, { text: '❓ FAQ', callback_data: 'faq' }]
   ];
-  if (isOwner(ctx.from.id)) rows.splice(3, 0, [Markup.button.callback('🔒 Admin Panel', 'admin')]);
-  return Markup.inlineKeyboard(rows);
+  if (isAdminId(userId)) rows.push([{ text: '🔒 Admin Panel', callback_data: 'admin' }]);
+  rows.push([{ text: '❌ Close', callback_data: 'close' }]);
+  return inline(rows);
 }
-function textHome() { return `${data.settings.welcome}\n\n🟢 Status: ${data.settings.status}`; }
-async function show(ctx, text, keyboard) {
-  try { await ctx.editMessageText(text, { parse_mode: 'HTML', ...keyboard }); }
-  catch { await ctx.reply(text, { parse_mode: 'HTML', ...keyboard }); }
-}
-const menu = {
-  home: ctx => show(ctx, textHome(), homeKeyboard(ctx)),
-  market: ctx => show(ctx, '📊 <b>Market</b>\n\nToken data will become available after launch.', Markup.inlineKeyboard([[Markup.button.callback('💰 Price', 'price'), Markup.button.callback('📈 Chart', 'chart')],[Markup.button.callback('🛒 Buy', 'buy')], backClose()])),
-  price: ctx => show(ctx, `💰 <b>Price</b>\n\n${data.settings.priceText}`, Markup.inlineKeyboard([backClose('market')])),
-  chart: ctx => show(ctx, data.settings.chartUrl ? '📈 <b>Chart</b>\n\nOpen official chart below.' : '📈 <b>Chart</b>\n\nChart will be available after launch.', Markup.inlineKeyboard([...(data.settings.chartUrl ? [[Markup.button.url('Open Chart', data.settings.chartUrl)]] : []), backClose('market')])) ,
-  buy: ctx => show(ctx, data.settings.buyUrl ? '🛒 <b>Buy TRINTOPE</b>\n\nUse only official links.' : '🛒 <b>Buy</b>\n\nTrading is not available yet.', Markup.inlineKeyboard([...(data.settings.buyUrl ? [[Markup.button.url('Buy', data.settings.buyUrl)]] : []), backClose('market')])) ,
-  project: ctx => show(ctx, '📚 <b>Project</b>', Markup.inlineKeyboard([[Markup.button.callback('📢 News', 'news'), Markup.button.callback('🗺 Roadmap', 'roadmap')],[Markup.button.callback('💎 Tokenomics', 'tokenomics')], backClose()])),
-  news: ctx => show(ctx, `📢 <b>News</b>\n\n${data.settings.news}`, Markup.inlineKeyboard([backClose('project')])),
-  roadmap: ctx => show(ctx, `🗺 <b>Roadmap</b>\n\n${data.settings.roadmap}`, Markup.inlineKeyboard([backClose('project')])),
-  tokenomics: ctx => show(ctx, `💎 <b>Tokenomics</b>\n\n${data.settings.tokenomics}`, Markup.inlineKeyboard([backClose('project')])),
-  community: ctx => show(ctx, '🌍 <b>Official Links</b>\n\nAlways use only official TRINTOPE links.', Markup.inlineKeyboard([[Markup.button.url('🌐 Website', data.settings.website)],[Markup.button.url('🐦 X', data.settings.x)],...(data.settings.telegramGroup ? [[Markup.button.url('💬 Group', data.settings.telegramGroup)]] : []),...(data.settings.telegramChannel ? [[Markup.button.url('📢 Channel', data.settings.telegramChannel)]] : []), backClose()])),
-  faq: ctx => show(ctx, `❓ <b>FAQ</b>\n\n${data.settings.faq}`, Markup.inlineKeyboard([backClose()])),
-  support: ctx => show(ctx, `📞 <b>Support</b>\n\n${data.settings.support}`, Markup.inlineKeyboard([[Markup.button.url('Contact via X', data.settings.x)], backClose()])),
-  admin: ctx => {
-    if (!isOwner(ctx.from.id) || !isPrivate(ctx)) return ctx.answerCbQuery('Access denied');
-    return show(ctx, '🔒 <b>Admin Panel</b>\n\nManage TRINTOPE bot content from Telegram.', Markup.inlineKeyboard([[Markup.button.callback('🟢 Status', 'admin_status'), Markup.button.callback('🔗 Links', 'admin_links')],[Markup.button.callback('📢 News', 'admin_edit_news'), Markup.button.callback('🗺 Roadmap', 'admin_edit_roadmap')],[Markup.button.callback('💎 Tokenomics', 'admin_edit_tokenomics'), Markup.button.callback('❓ FAQ', 'admin_edit_faq')],[Markup.button.callback('📝 Welcome', 'admin_edit_welcome'), Markup.button.callback('📊 Stats', 'admin_stats')], backClose('home')]));
-  },
-  admin_status: ctx => show(ctx, '🟢 <b>Project Status</b>\n\nChoose current status.', Markup.inlineKeyboard([[Markup.button.callback('Building', 'set_status_Building'), Markup.button.callback('Presale', 'set_status_Presale'), Markup.button.callback('Live', 'set_status_Live')], backClose('admin')])),
-  admin_links: ctx => show(ctx, `🔗 <b>Links</b>\n\nWebsite: ${data.settings.website}\nX: ${data.settings.x}\nGroup: ${data.settings.telegramGroup || 'not set'}\nChannel: ${data.settings.telegramChannel || 'not set'}`, Markup.inlineKeyboard([[Markup.button.callback('Edit Website', 'admin_edit_website'), Markup.button.callback('Edit X', 'admin_edit_x')],[Markup.button.callback('Edit Group', 'admin_edit_telegramGroup'), Markup.button.callback('Edit Channel', 'admin_edit_telegramChannel')], backClose('admin')])),
-  admin_stats: ctx => show(ctx, `📊 <b>Stats</b>\n\nUsers: ${Object.keys(data.users).length}\nAdmin logs: ${data.logs.length}`, Markup.inlineKeyboard([backClose('admin')]))
-};
 
-bot.start(async ctx => { trackUser(ctx); if (!isPrivate(ctx)) return cleanGroupCommand(ctx); await ctx.reply(textHome(), { parse_mode: 'HTML', ...homeKeyboard(ctx) }); });
-bot.command('help', async ctx => { trackUser(ctx); if (!isPrivate(ctx)) return cleanGroupCommand(ctx); await ctx.reply('Use /start to open the TRINTOPE menu.'); });
-bot.command('id', async ctx => { if (!isPrivate(ctx)) return cleanGroupCommand(ctx); await ctx.reply(`Your Telegram ID: ${ctx.from.id}`); });
-bot.command('setup_owner', async ctx => {
-  if (!isPrivate(ctx)) return;
-  const parts = ctx.message.text.split(' ');
-  const code = parts.slice(1).join(' ').trim();
-  if (data.ownerIds.length > 0 && !isOwner(ctx.from.id)) return ctx.reply('Owner already configured.');
-  if (!OWNER_SETUP_CODE) return ctx.reply('OWNER_SETUP_CODE is not configured in Railway.');
-  if (code !== OWNER_SETUP_CODE) return ctx.reply('Invalid setup code.');
-  if (!data.ownerIds.includes(String(ctx.from.id))) data.ownerIds.push(String(ctx.from.id));
-  log(ctx.from.id, 'Owner setup completed');
-  await ctx.reply('✅ Owner access enabled. Send /start to open Admin Panel.');
+function backKb(parent = 'home') { return inline([[{ text: '⬅ Back', callback_data: parent }, { text: '❌ Close', callback_data: 'close' }]]); }
+
+async function showOrEdit(chatId, userId, text, keyboard, messageId = null) {
+  clearMenuTimer(chatId);
+  try {
+    if (messageId) {
+      await bot.editMessageText(text, { chat_id: chatId, message_id: messageId, parse_mode: 'HTML', ...keyboard });
+      session.set(chatId, messageId);
+      setMenuTimer(chatId, messageId);
+      return messageId;
+    }
+  } catch (_) {}
+
+  const old = session.get(chatId);
+  if (old) await safeDelete(chatId, old);
+  const sent = await bot.sendMessage(chatId, text, { parse_mode: 'HTML', ...keyboard });
+  session.set(chatId, sent.message_id);
+  setMenuTimer(chatId, sent.message_id);
+  return sent.message_id;
+}
+
+function setMenuTimer(chatId, messageId) {
+  clearMenuTimer(chatId);
+  const t = setTimeout(async () => {
+    await safeDelete(chatId, messageId);
+    session.delete(chatId);
+    timers.delete(chatId);
+  }, AUTO_DELETE_MS);
+  timers.set(chatId, t);
+}
+function clearMenuTimer(chatId) { if (timers.has(chatId)) clearTimeout(timers.get(chatId)); timers.delete(chatId); }
+
+async function groupRedirect(msg) {
+  const chatId = msg.chat.id;
+  await safeDelete(chatId, msg.message_id);
+  const url = botUsername ? `https://t.me/${botUsername}?start=group` : undefined;
+  const sent = await bot.sendMessage(chatId, '🔒 Open the official TRINTOPE Bot in private chat to use the menu.', inline([[urlButton('🤖 Open Bot', url)]]));
+  setTimeout(() => safeDelete(chatId, sent.message_id), 12000);
+}
+
+bot.getMe().then(me => { botUsername = me.username; console.log(`Bot running as @${botUsername}`); });
+
+bot.onText(/^\/id/, async (msg) => {
+  trackUser(msg.from);
+  await safeDelete(msg.chat.id, msg.message_id);
+  if (msg.chat.type !== 'private') return groupRedirect(msg);
+  const sent = await bot.sendMessage(msg.chat.id, `Your Telegram ID:\n<code>${msg.from.id}</code>`, { parse_mode: 'HTML' });
+  setTimeout(() => safeDelete(msg.chat.id, sent.message_id), 20000);
 });
 
-bot.on('callback_query', async ctx => {
-  trackUser(ctx);
-  const action = ctx.callbackQuery.data;
-  await ctx.answerCbQuery().catch(()=>{});
-  if (!isPrivate(ctx)) return;
-  if (action === 'close') { try { await ctx.deleteMessage(); } catch {} return; }
-  if (action.startsWith('set_status_')) {
-    if (!isOwner(ctx.from.id)) return;
-    data.settings.status = action.replace('set_status_', ''); log(ctx.from.id, `Status changed to ${data.settings.status}`);
-    return menu.admin_status(ctx);
+bot.onText(/^\/setup_owner(?:\s+(.+))?/, async (msg, match) => {
+  trackUser(msg.from);
+  await safeDelete(msg.chat.id, msg.message_id);
+  if (msg.chat.type !== 'private') return;
+  if (data.ownerIds.length > 0 && !data.ownerIds.includes(msg.from.id)) {
+    const sent = await bot.sendMessage(msg.chat.id, '🔒 Owner is already configured.');
+    return setTimeout(() => safeDelete(msg.chat.id, sent.message_id), 8000);
   }
-  if (action.startsWith('admin_edit_')) {
-    if (!isOwner(ctx.from.id)) return;
-    const key = action.replace('admin_edit_', '');
-    data.pending[String(ctx.from.id)] = { type: 'edit', key };
-    saveData();
-    return show(ctx, `✏️ Send new value for: <b>${key}</b>\n\nSend /cancel to cancel.`, Markup.inlineKeyboard([backClose(key === 'website' || key === 'x' || key.startsWith('telegram') ? 'admin_links' : 'admin')]));
+  const code = (match[1] || '').trim();
+  if (!OWNER_SETUP_CODE || code !== OWNER_SETUP_CODE) {
+    const sent = await bot.sendMessage(msg.chat.id, '❌ Invalid setup code.');
+    return setTimeout(() => safeDelete(msg.chat.id, sent.message_id), 8000);
   }
-  if (menu[action]) return menu[action](ctx);
+  if (!data.ownerIds.includes(msg.from.id)) data.ownerIds.push(msg.from.id);
+  saveData();
+  logAction(msg.from.id, 'Owner access activated');
+  const sent = await bot.sendMessage(msg.chat.id, '✅ Owner access activated. Admin Panel is now available to you.');
+  setTimeout(() => safeDelete(msg.chat.id, sent.message_id), 12000);
+  await showOrEdit(msg.chat.id, msg.from.id, homeText(msg.from.id), homeKb(msg.from.id));
 });
 
-bot.command('cancel', async ctx => { delete data.pending[String(ctx.from.id)]; saveData(); await ctx.reply('Cancelled.'); });
-bot.on('text', async ctx => {
-  trackUser(ctx);
-  if (!isPrivate(ctx)) {
-    if (ctx.message.text.startsWith('/')) return cleanGroupCommand(ctx);
+bot.onText(/^\/start/, async (msg) => {
+  trackUser(msg.from);
+  await safeDelete(msg.chat.id, msg.message_id);
+  if (msg.chat.type !== 'private') return groupRedirect(msg);
+  await showOrEdit(msg.chat.id, msg.from.id, homeText(msg.from.id), homeKb(msg.from.id));
+});
+
+bot.onText(/^\/help/, async (msg) => {
+  trackUser(msg.from);
+  await safeDelete(msg.chat.id, msg.message_id);
+  if (msg.chat.type !== 'private') return groupRedirect(msg);
+  await showOrEdit(msg.chat.id, msg.from.id, '❓ Help\n\nUse the buttons to navigate. The chat stays clean: commands and menus can disappear automatically.', backKb('home'));
+});
+
+bot.on('message', async (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) return;
+  trackUser(msg.from);
+  const st = editState.get(msg.from.id);
+  if (!st || msg.chat.type !== 'private' || !isAdminId(msg.from.id)) return;
+  await safeDelete(msg.chat.id, msg.message_id);
+  data.settings[st.field] = msg.text.trim();
+  saveData();
+  logAction(msg.from.id, `Updated ${st.field}`);
+  editState.delete(msg.from.id);
+  await showOrEdit(msg.chat.id, msg.from.id, `✅ Updated: ${st.label}\n\n${escapeHtml(msg.text.trim())}`, adminKb(), session.get(msg.chat.id));
+});
+
+bot.on('callback_query', async (q) => {
+  const chatId = q.message.chat.id;
+  const userId = q.from.id;
+  const mid = q.message.message_id;
+  trackUser(q.from);
+  await bot.answerCallbackQuery(q.id).catch(() => {});
+
+  if (q.message.chat.type !== 'private') return;
+
+  const c = q.data;
+  if (c === 'close') {
+    clearMenuTimer(chatId);
+    await safeDelete(chatId, mid);
+    session.delete(chatId);
     return;
   }
-  const pending = data.pending[String(ctx.from.id)];
-  if (pending && isOwner(ctx.from.id)) {
-    const key = pending.key;
-    if (Object.prototype.hasOwnProperty.call(data.settings, key)) {
-      data.settings[key] = ctx.message.text.trim();
-      delete data.pending[String(ctx.from.id)];
-      log(ctx.from.id, `Edited ${key}`);
-      saveData();
-      return ctx.reply(`✅ Updated: ${key}`);
-    }
+  if (c === 'home') return showOrEdit(chatId, userId, homeText(userId), homeKb(userId), mid);
+  if (c === 'market') return showOrEdit(chatId, userId, '📊 Market\n\n💰 Price: Token is not live yet.\n📈 Chart: Available after launch.\n🛒 Buy: Trading is not available yet.', backKb('home'), mid);
+  if (c === 'community') return showOrEdit(chatId, userId, '🌍 Community\n\nUse only official links below.', inline([[urlButton('🌐 Website', data.settings.website), urlButton('🐦 X', data.settings.x)], [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]]), mid);
+  if (c === 'project') return showOrEdit(chatId, userId, `📚 Project\n\n📢 News:\n${escapeHtml(data.settings.news)}\n\n🗺 Roadmap:\n${escapeHtml(data.settings.roadmap)}\n\n💎 Tokenomics:\n${escapeHtml(data.settings.tokenomics)}`, backKb('home'), mid);
+  if (c === 'faq') return showOrEdit(chatId, userId, `❓ FAQ\n\n${escapeHtml(data.settings.faq)}`, backKb('home'), mid);
+  if (c === 'missing_link') return showOrEdit(chatId, userId, '⚠️ This link is not configured yet.', backKb('home'), mid);
+
+  if (c === 'admin') {
+    if (!isAdminId(userId)) return showOrEdit(chatId, userId, '🔒 Access denied.', backKb('home'), mid);
+    return showOrEdit(chatId, userId, adminText(), adminKb(), mid);
+  }
+  if (c === 'admin_status') return showOrEdit(chatId, userId, '🟢 Choose project status:', inline([[{ text: '🔵 Building', callback_data: 'set_status:Building' }, { text: '🟡 Presale', callback_data: 'set_status:Presale' }], [{ text: '🟢 Live', callback_data: 'set_status:Live' }], [{ text: '⬅ Back', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]]), mid);
+  if (c.startsWith('set_status:')) {
+    if (!isAdminId(userId)) return;
+    data.settings.status = c.split(':')[1]; saveData(); logAction(userId, `Status changed to ${data.settings.status}`);
+    return showOrEdit(chatId, userId, `✅ Status changed to: ${data.settings.status}`, adminKb(), mid);
+  }
+  const editMap = {
+    admin_links_website: ['website', 'Website URL'],
+    admin_links_x: ['x', 'X URL'],
+    admin_news: ['news', 'News'],
+    admin_roadmap: ['roadmap', 'Roadmap'],
+    admin_tokenomics: ['tokenomics', 'Tokenomics'],
+    admin_faq: ['faq', 'FAQ'],
+    admin_welcome: ['welcome', 'Welcome Text']
+  };
+  if (c === 'admin_links') return showOrEdit(chatId, userId, '🔗 Edit Links', inline([[{ text: '🌐 Website', callback_data: 'admin_links_website' }, { text: '🐦 X', callback_data: 'admin_links_x' }], [{ text: '⬅ Back', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]]), mid);
+  if (editMap[c]) {
+    const [field, label] = editMap[c];
+    editState.set(userId, { field, label });
+    return showOrEdit(chatId, userId, `✏️ Send new ${label} in the next message.\n\nCurrent value:\n${escapeHtml(data.settings[field])}`, backKb('admin'), mid);
+  }
+  if (c === 'admin_stats') {
+    const users = Object.keys(data.users).length;
+    const logs = data.logs.slice(0, 6).map(l => `• ${new Date(l.time).toLocaleString()} — ${escapeHtml(l.action)}`).join('\n') || 'No logs yet.';
+    return showOrEdit(chatId, userId, `📊 Stats\n\nUsers: ${users}\nStatus: ${data.settings.status}\n\nRecent actions:\n${logs}`, adminKb(), mid);
   }
 });
 
-bot.catch((err) => console.error('Bot error:', err));
-bot.launch();
-console.log('TRINTOPE Bot is running');
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+function adminText() {
+  return `🔒 TRINTOPE Control Center\n\nWelcome back, Owner.\n\nStatus: ${statusIcon()} ${data.settings.status}\nVersion: 2.0.0\n\nManage your ecosystem from Telegram.`;
+}
+function adminKb() {
+  return inline([
+    [{ text: '🟢 Status', callback_data: 'admin_status' }, { text: '🔗 Links', callback_data: 'admin_links' }],
+    [{ text: '📢 News', callback_data: 'admin_news' }, { text: '🗺 Roadmap', callback_data: 'admin_roadmap' }],
+    [{ text: '💎 Tokenomics', callback_data: 'admin_tokenomics' }, { text: '❓ FAQ', callback_data: 'admin_faq' }],
+    [{ text: '✏️ Welcome', callback_data: 'admin_welcome' }, { text: '📊 Stats', callback_data: 'admin_stats' }],
+    [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]
+  ]);
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+}
+
+process.on('unhandledRejection', err => console.error('Unhandled rejection:', err));
