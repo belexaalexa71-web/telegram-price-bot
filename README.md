@@ -1,18 +1,20 @@
-# TRINTOPE Bot Admin Core v2
+# TRINTOPE Bot Admin Edit v3
 
-## Features
-- Private chat menu only
-- Group commands are deleted
-- Group users get temporary "Open Bot" button
-- Admin panel protected by ADMIN_IDS
-- Admin Stats
-- Admin Status switch: Building / Presale / Live
-- Official links section
+## Railway Variables
+- BOT_TOKEN - token from BotFather
+- ADMIN_IDS - your Telegram ID, or several IDs separated by comma
+- BOT_USERNAME - bot username without @, optional but recommended for group button
 
-## Railway variables
-Required:
-- BOT_TOKEN
-- ADMIN_IDS
+## Admin commands in private chat
+- /id
+- /setwebsite https://...
+- /setx https://x.com/...
+- /setnews text
+- /setroadmap text
+- /settokenomics text
+- /setfaq text
 
-Example:
-ADMIN_IDS=123456789
+## Behavior
+- In groups: commands are deleted and users are sent to private bot chat.
+- In private: one-message menu with Back and Close.
+- Admin panel only appears for IDs in ADMIN_IDS.
