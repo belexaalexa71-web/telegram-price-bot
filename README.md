@@ -1,23 +1,18 @@
-# TRINTOPE Telegram Bot
+# TRINTOPE Bot Core v1
 
-## Features
-- Group stays clean: commands are deleted if the bot has Delete Messages permission.
-- In groups, users get only a short prompt to open the private bot.
-- Full menu works in private chat only.
-- One-message navigation with Back and Close.
-- Auto-delete inactive menu after 3 minutes.
-- Admin panel visible only to IDs in `ADMIN_IDS`.
+Features:
+- private chat menu only
+- group commands are deleted when bot has Delete Messages permission
+- group users get temporary Open Bot button
+- one-message navigation in private chat
+- Back / Close
+- auto-delete menu after 5 minutes
+- secure admin panel visible only to ADMIN_IDS
 
-## Railway variables
-Required:
-- `BOT_TOKEN`
-- `ADMIN_IDS`
-
-Optional:
-- `WEBSITE_URL`
-- `X_URL`
-- `PROJECT_STATUS`
-
-## Telegram group permissions
-Give the bot admin permission: Delete messages.
-No ban or invite permissions are required for this version.
+Railway variables:
+- BOT_TOKEN required
+- ADMIN_IDS required for admin panel, example: 123456789
+- WEBSITE_URL optional
+- X_URL optional
+- TELEGRAM_GROUP_URL optional
+- TELEGRAM_CHANNEL_URL optional
