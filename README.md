@@ -1,31 +1,23 @@
-# TRINTOPE Telegram Bot v2.1
+# TRINTOPE Telegram Bot v2.2
 
-Official Telegram bot for the TRINTOPE project.
+This version keeps group chats cleaner:
 
-## What is included
+- Deletes slash commands in groups, such as `/start`, `/price`, `/help`.
+- Optionally auto-deletes the bot's own command replies in groups.
+- Keeps normal private chat behavior unchanged.
 
-- Main menu with buttons
-- Website button
-- X button
-- Price placeholder
-- Chart placeholder
-- Buy placeholder
-- Official links
-- Auto-delete slash commands in groups
+## Required Railway variable
 
-## Commands
+`BOT_TOKEN=your_token_from_BotFather`
 
-/start - Open main menu
-/price - Token price
-/chart - Price chart
-/buy - Buy token
-/links - Official links
-/help - Help
+## Optional Railway variables
+
+`PROJECT_NAME=TRINTOPE`
+`WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/`
+`X_URL=https://x.com/AndrejK40133234`
+`DELETE_BOT_REPLIES_IN_GROUPS=true`
+`BOT_REPLY_DELETE_SECONDS=45`
 
 ## Important
 
-For auto-delete of commands in a group, make the bot an admin and give it permission to delete messages.
-
-## Environment variable
-
-BOT_TOKEN=your_token_from_BotFather
+In Telegram group settings, the bot must be an admin with **Delete messages** permission.
