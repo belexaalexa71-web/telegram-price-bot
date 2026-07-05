@@ -1,45 +1,49 @@
-# TRINTOPE Bot Owner Setup v4
+# TRINTOPE Bot Security Core v1
+
+## Что есть внутри
+
+- Личное меню бота.
+- В группе меню не показывается.
+- Команды в группе удаляются, если у бота есть право Delete messages.
+- Кнопка Open Bot для перехода в личку.
+- Owner setup через OWNER_SETUP_CODE.
+- Admin Panel только для владельца / админов.
+- Stats, Status, Links, Logs.
 
 ## Railway variables
 
 Required:
 
-- BOT_TOKEN
-- OWNER_SETUP_CODE
+```env
+BOT_TOKEN=your_bot_token
+```
 
 Recommended:
 
-- BOT_USERNAME
-- WEBSITE_URL
-- X_URL
+```env
+OWNER_SETUP_CODE=your_secret_owner_code
+ADMIN_IDS=your_telegram_id
+```
 
-Optional fallback:
+## Owner setup
 
-- ADMIN_IDS
-
-## First owner setup
-
-1. Add `OWNER_SETUP_CODE` in Railway Variables.
-2. Redeploy.
-3. In private chat with bot, send:
+В личке с ботом:
 
 ```text
 /setup_owner YOUR_SECRET_CODE
 ```
 
-After success, Admin Panel appears only for your Telegram ID.
-
-## Admin commands
-
-Private chat only:
+После этого отправь:
 
 ```text
-/set_status Building
-/set_news Your announcement
-/set_website https://...
-/set_x https://x.com/...
+/start
 ```
 
-## Group behavior
+## Команды
 
-The bot removes commands in groups if it has Delete Messages permission and sends users to private chat.
+```text
+/start
+/help
+/id
+/setup_owner SECRET
+```

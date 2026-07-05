@@ -1,7 +1,7 @@
 {
   "name": "trintope-bot",
-  "version": "4.0.0",
-  "description": "TRINTOPE Telegram bot with private menu, clean group mode, and secure owner setup",
+  "version": "1.0.0",
+  "description": "Official TRINTOPE Telegram bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
