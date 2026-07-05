@@ -10,6 +10,8 @@ const TELEGRAM_GROUP_URL = process.env.TELEGRAM_GROUP_URL || '';
 const TELEGRAM_CHANNEL_URL = process.env.TELEGRAM_CHANNEL_URL || '';
 const STATUS = process.env.PROJECT_STATUS || 'Building';
 const GROUP_SILENT_MODE = (process.env.GROUP_SILENT_MODE || 'true').toLowerCase() !== 'false';
+let BOT_USERNAME = process.env.BOT_USERNAME || '';
+const GROUP_PROMPT_DELETE_SECONDS = Number(process.env.GROUP_PROMPT_DELETE_SECONDS || 8);
 
 if (!BOT_TOKEN) {
   console.error('ERROR: BOT_TOKEN is missing. Add BOT_TOKEN in Railway Variables.');
@@ -17,6 +19,13 @@ if (!BOT_TOKEN) {
 }
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
+bot.getMe()
+  .then((me) => {
+    BOT_USERNAME = BOT_USERNAME || me.username;
+    console.log(`Bot username: @${BOT_USERNAME}`);
+  })
+  .catch((err) => console.log('Could not get bot username:', err.message));
 
 function isGroup(chat) {
   return chat && (chat.type === 'group' || chat.type === 'supergroup');
@@ -83,6 +92,28 @@ async function sendPrivateSection(userId, key) {
   });
 }
 
+async function sendTemporaryOpenBotPrompt(chatId, userFirstName) {
+  if (!BOT_USERNAME) return;
+
+  const sent = await bot.sendMessage(
+    chatId,
+    `👋 ${userFirstName || 'Open'} — use the bot in private chat.`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🚀 Open TRINTOPE Bot', url: `https://t.me/${BOT_USERNAME}?start=group` }
+        ]]
+      },
+      disable_notification: true,
+      disable_web_page_preview: true
+    }
+  );
+
+  setTimeout(() => {
+    safeDelete(chatId, sent.message_id);
+  }, Math.max(3, GROUP_PROMPT_DELETE_SECONDS) * 1000);
+}
+
 async function handleGroupMessage(msg) {
   if (!GROUP_SILENT_MODE) return false;
 
@@ -93,12 +124,14 @@ async function handleGroupMessage(msg) {
   if (isCommand) {
     await safeDelete(chatId, msg.message_id);
 
-    // Try to move the user to private chat without posting anything in the group.
-    // This will only work if the user has already opened the bot before.
+    // Telegram does not allow bots to force-open private chat.
+    // If the user has already opened the bot before, we send the menu privately.
+    // If not, we show a silent temporary button in the group and delete it automatically.
     try {
       await sendPrivateMenu(msg.from.id);
     } catch (err) {
       console.log('Private message not sent. User probably has not started the bot yet:', err.response?.body?.description || err.message);
+      await sendTemporaryOpenBotPrompt(chatId, msg.from.first_name);
     }
 
     return true;
@@ -169,8 +202,9 @@ bot.on('callback_query', async (query) => {
       await sendPrivateSection(query.from.id, data);
       await bot.answerCallbackQuery(query.id, { text: 'Opened in private chat.' });
     } catch (err) {
+      await sendTemporaryOpenBotPrompt(msg.chat.id, query.from.first_name);
       await bot.answerCallbackQuery(query.id, {
-        text: 'Open the bot in private chat first.',
+        text: 'Tap the Open Bot button in the group.',
         show_alert: true
       });
     }
@@ -202,4 +236,4 @@ bot.on('polling_error', (err) => {
   console.log('Polling error:', err.message);
 });
 
-console.log(`${PROJECT_NAME} bot v2.3 is running. Group silent mode: ${GROUP_SILENT_MODE}`);
+console.log(`${PROJECT_NAME} bot v2.4 is running. Group silent mode: ${GROUP_SILENT_MODE}`);

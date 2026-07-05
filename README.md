@@ -1,44 +1,28 @@
-# TRINTOPE Telegram Bot v2.3
+# TRINTOPE Telegram Bot v2.4
 
-This version keeps the main Telegram group clean.
+This version keeps the group clean:
 
-## What changed
-
-- Commands in groups are deleted automatically.
-- The bot does not post menu replies in the group.
-- The bot tries to move users to private chat silently.
-- If users press buttons from old group menus, the old menu is removed.
-- All normal bot interaction happens in private messages.
+- Deletes user commands in groups.
+- Does not post normal bot answers in groups.
+- If the user has already opened the bot before, the menu is sent privately.
+- If the user has not opened the bot before, Telegram blocks private messages. In that case the bot sends one silent temporary button: **Open TRINTOPE Bot**, then deletes it automatically.
+- Uses `disable_notification: true` for the temporary group prompt.
 
 ## Required Railway variable
 
-```env
 BOT_TOKEN=your_token_from_BotFather
-```
 
-## Recommended Railway variables
+## Optional variables
 
-```env
 PROJECT_NAME=TRINTOPE
 WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/
 X_URL=https://x.com/AndrejK40133234
 PROJECT_STATUS=Building
 GROUP_SILENT_MODE=true
-```
+GROUP_PROMPT_DELETE_SECONDS=8
 
-Optional later:
+## Important
 
-```env
-CHART_URL=
-BUY_URL=
-TELEGRAM_GROUP_URL=
-TELEGRAM_CHANNEL_URL=
-```
-
-## Important Telegram permissions
-
-In your Telegram group, the bot must be an admin with:
+In the Telegram group, the bot must be admin and must have permission:
 
 - Delete messages / Удалять сообщения
-
-Without this permission Telegram will not allow the bot to delete group commands or old bot menus.
