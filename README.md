@@ -1,34 +1,23 @@
-# TRINTOPE Bot — Secure Admin Panel
+# TRINTOPE Telegram Bot
+
+## Features
+- Group stays clean: commands are deleted if the bot has Delete Messages permission.
+- In groups, users get only a short prompt to open the private bot.
+- Full menu works in private chat only.
+- One-message navigation with Back and Close.
+- Auto-delete inactive menu after 3 minutes.
+- Admin panel visible only to IDs in `ADMIN_IDS`.
 
 ## Railway variables
-
 Required:
+- `BOT_TOKEN`
+- `ADMIN_IDS`
 
-- `BOT_TOKEN` — token from BotFather
-- `ADMIN_IDS` — your Telegram ID. Example: `123456789`
+Optional:
+- `WEBSITE_URL`
+- `X_URL`
+- `PROJECT_STATUS`
 
-To get your Telegram ID, send `/id` to the bot after deployment.
-
-## Admin security
-
-- Admin panel is visible only to IDs listed in `ADMIN_IDS`.
-- Admin commands work only in private chat.
-- Group commands can be deleted if the bot has admin permission: Delete messages.
-
-## Admin commands
-
-Use only in private chat with bot:
-
-- `/setstatus Building`
-- `/setwebsite https://example.com`
-- `/setx https://x.com/example`
-- `/settelegram https://t.me/example`
-- `/setnews Your announcement`
-- `/setroadmap Your roadmap`
-- `/settokenomics Your tokenomics`
-
-## Public commands
-
-- `/start`
-- `/help`
-- `/id`
+## Telegram group permissions
+Give the bot admin permission: Delete messages.
+No ban or invite permissions are required for this version.
