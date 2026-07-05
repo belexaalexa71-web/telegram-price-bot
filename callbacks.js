@@ -1,40 +1,28 @@
-import { home, market, project, community, help, simpleSetting, admin, adminContent, adminProject, adminAnalytics, adminSystem, statusMenu, linksMenu, logsScreen, versionScreen } from './screens.js';
-import { isOwner, setSetting, logAction } from '../services/db.js';
-import { setAwaiting } from '../services/session.js';
-
-async function render(ctx, screen) {
-  try { await ctx.editMessageText(screen.text, { reply_markup: screen.keyboard.reply_markup, disable_web_page_preview: true }); }
-  catch { await ctx.reply(screen.text, { reply_markup: screen.keyboard.reply_markup, disable_web_page_preview: true }); }
-}
-
-const editMap = { welcome:'Welcome text', news:'News', faq:'FAQ', roadmap:'Roadmap', tokenomics:'Tokenomics', whitepaper:'Whitepaper', website:'Website URL', x:'X URL' };
-
-export async function handleCallback(ctx) {
-  const data = ctx.callbackQuery.data;
-  await ctx.answerCbQuery().catch(()=>{});
-  if (data === 'close') return ctx.deleteMessage().catch(()=>{});
-
-  const ownerOnly = data.startsWith('admin') || data.startsWith('edit:') || data.startsWith('set_status') || ['status_menu','links_menu','logs','version'].includes(data);
-  if (ownerOnly && !(await isOwner(ctx.from.id))) return ctx.answerCbQuery('Access denied', { show_alert: true });
-
-  if (data.startsWith('edit:')) {
-    const key = data.split(':')[1];
-    setAwaiting(ctx.from.id, { type:'edit', key });
-    return render(ctx, { text:`✏️ Edit ${editMap[key] || key}\n\nSend the new value as your next message.\n\nType /cancel to cancel.`, keyboard: { reply_markup: { inline_keyboard: [[{text:'⬅ Back', callback_data:'admin'}],[{text:'❌ Close', callback_data:'close'}]] } } });
-  }
-  if (data.startsWith('set_status:')) {
-    const value = data.split(':')[1];
-    await setSetting('project_status', value);
-    await logAction(ctx.from.id, `Status changed to ${value}`);
-    return render(ctx, await statusMenu());
-  }
-
-  const screens = {
-    home: () => home(ctx), market, project, community, help,
-    price: () => simpleSetting('💰 Price', 'price'), chart: () => simpleSetting('📈 Chart', 'chart'), buy: () => simpleSetting('🛒 Buy', 'buy'),
-    news: () => simpleSetting('📢 News', 'news'), roadmap: () => simpleSetting('🗺 Roadmap', 'roadmap'), tokenomics: () => simpleSetting('💎 Tokenomics', 'tokenomics'), faq: () => simpleSetting('❓ FAQ', 'faq'),
-    admin: () => admin(ctx), admin_content: adminContent, admin_project: adminProject, admin_analytics: adminAnalytics, admin_system: adminSystem,
-    status_menu: statusMenu, links_menu: linksMenu, logs: logsScreen, version: versionScreen,
-  };
-  if (screens[data]) return render(ctx, await screens[data]());
+import { store } from '../database/store.js';
+import { showHome } from '../commands/start.js';
+import { backKeyboard, marketKeyboard, communityKeyboard } from '../keyboards/user.js';
+import { adminKeyboard, statusKeyboard, editKeyboard } from '../keyboards/admin.js';
+import { isOwner } from '../services/security.js';
+export async function onCallback(ctx){
+  const a = ctx.callbackQuery.data; await ctx.answerCbQuery().catch(()=>{}); const d=store.get();
+  if(a==='close') return ctx.deleteMessage().catch(()=>{});
+  if(a==='home') return showHome(ctx,true);
+  if(a==='market') return ctx.editMessageText('📊 Market\n\nToken data will be available after launch.', marketKeyboard());
+  if(a==='price') return ctx.editMessageText('💰 Price\n\nToken is not live yet.', backKeyboard());
+  if(a==='chart') return ctx.editMessageText('📈 Chart\n\nChart will be available after launch.', backKeyboard());
+  if(a==='buy') return ctx.editMessageText('🛒 Buy\n\nTrading is not available yet.', backKeyboard());
+  if(a==='community') return ctx.editMessageText('🌍 Official Community\n\nUse only official links below.', communityKeyboard(d.settings.website, d.settings.xUrl));
+  if(a==='project') return ctx.editMessageText(`📚 Project\n\n🗺 Roadmap:\n${d.roadmap}\n\n💎 Tokenomics:\n${d.tokenomics}`, backKeyboard());
+  if(a==='faq') return ctx.editMessageText(`❓ FAQ\n\n${d.faq}`, backKeyboard());
+  if(a.startsWith('admin') || a.startsWith('set_status') || a.startsWith('edit:')) { if(!isOwner(ctx)) return ctx.answerCbQuery('Access denied'); }
+  if(a==='admin_home') return ctx.editMessageText('🔒 TRINTOPE Control Center\n\nManage project content and settings.', adminKeyboard());
+  if(a==='admin_status') return ctx.editMessageText(`🟢 Project Status\n\nCurrent: ${d.settings.status}`, statusKeyboard());
+  if(a.startsWith('set_status:')) { const status=a.split(':')[1]; store.set(x=>{x.settings.status=status; x.logs.unshift({at:new Date().toISOString(),userId:String(ctx.from.id),action:`STATUS:${status}`})}); return ctx.editMessageText(`✅ Status updated: ${status}`, adminKeyboard()); }
+  if(a==='admin_links') return ctx.editMessageText(`🔗 Links\n\nWebsite: ${d.settings.website}\nX: ${d.settings.xUrl}\n\nTo edit, send:\n/set_website URL\n/set_x URL`, editKeyboard('links'));
+  if(a==='admin_news') return ctx.editMessageText(`📢 News\n\n${d.news}\n\nTo edit, send:\n/set_news text`, editKeyboard('news'));
+  if(a==='admin_roadmap') return ctx.editMessageText(`🗺 Roadmap\n\n${d.roadmap}\n\nTo edit, send:\n/set_roadmap text`, editKeyboard('roadmap'));
+  if(a==='admin_tokenomics') return ctx.editMessageText(`💎 Tokenomics\n\n${d.tokenomics}\n\nTo edit, send:\n/set_tokenomics text`, editKeyboard('tokenomics'));
+  if(a==='admin_faq') return ctx.editMessageText(`❓ FAQ\n\n${d.faq}\n\nTo edit, send:\n/set_faq text`, editKeyboard('faq'));
+  if(a==='admin_stats') return ctx.editMessageText(`📊 Stats\n\nUsers: ${Object.keys(d.users).length}\nLogs: ${d.logs.length}`, adminKeyboard());
+  if(a==='admin_logs') return ctx.editMessageText(`📋 Last Logs\n\n${d.logs.slice(0,8).map(l=>`${l.at} — ${l.action}`).join('\n') || 'No logs yet.'}`, adminKeyboard());
 }

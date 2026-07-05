@@ -1,22 +1,24 @@
-# TRINTOPE Bot Real v1
+# TRINTOPE Bot Real v2
+
+Рабочий модульный Telegram-бот на Node.js + Telegraf.
 
 ## Railway variables
-Required:
-- BOT_TOKEN
-- OWNER_SETUP_CODE
+- BOT_TOKEN — токен BotFather
+- OWNER_SETUP_CODE — секрет для первой регистрации владельца
+- ADMIN_IDS — можно оставить пустым после setup_owner, либо указать Telegram ID через запятую
+- WEBSITE_URL — необязательно
+- X_URL — необязательно
+- MENU_TTL_MS — необязательно
 
-Optional:
-- DATABASE_URL (Railway PostgreSQL). If missing, bot uses data.json fallback.
-- MENU_TTL_MS
+## Commands
+- /start — открыть меню
+- /id — узнать Telegram ID
+- /setup_owner CODE — первая регистрация владельца
 
-## Owner setup
-In private chat:
-`/setup_owner YOUR_CODE`
-
-## Features
-- Clean private menu
-- Clean group behavior
-- Owner-only Control Center
-- Edit News / FAQ / Welcome / Website / X / Roadmap / Tokenomics from Telegram
-- Status switching
-- Stats and logs
+## Owner edit commands
+- /set_website URL
+- /set_x URL
+- /set_news text
+- /set_roadmap text
+- /set_tokenomics text
+- /set_faq text
