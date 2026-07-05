@@ -1,37 +1,30 @@
-# TRINTOPE Bot v0.2.1 — Better Admin UX
+# TRINTOPE Bot v0.3.0 — Launch Center
 
-Stable Telegram Control Center with improved owner experience.
+This update keeps the existing stable Core and Control Center, and adds a dedicated Launch Center for the Solana launch.
 
-## What changed
+## Added
+- Public 🚀 Launch screen
+- Owner-only 🚀 Launch Center inside Control Center
+- Editable fields from Telegram:
+  - Network
+  - Launch status
+  - Launch date
+  - Contract
+  - Chart link
+  - Buy link
+  - Solscan link
+  - DEX link
+- Version updated to 0.3.0
 
-- Control Center layout improved.
-- Public status changes now require confirmation.
-- Editing screen has Cancel button.
-- Status uses clear icons.
-- Admin logs are easier to read.
-- Version updated to `0.2.1`.
+## Not changed
+- Owner protection
+- Group clean mode
+- Back / Close navigation
+- PostgreSQL / data.json fallback
 
-## What did not change
-
-- Core navigation.
-- Owner protection.
-- Group clean mode.
-- PostgreSQL/data.json storage behavior.
-
-## Required Railway variables
-
-- `BOT_TOKEN`
-- `OWNER_SETUP_CODE`
-- `DATABASE_URL` recommended
-- `ADMIN_IDS` optional fallback owner list
-- `MENU_TTL_MS` optional
-
-## Deploy
-
-Upload the full project to GitHub and wait for Railway to redeploy.
-
-Expected log:
-
-```text
-✅ TRINTOPE Bot v0.2.1 launched
-```
+## Check after deployment
+1. Open `/start` in private chat.
+2. Press 🚀 Launch.
+3. Press 🔒 Control Center → 🚀 Launch Center.
+4. Edit one harmless field, for example Launch date.
+5. Confirm that the public 🚀 Launch screen shows the updated value.

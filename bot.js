@@ -8,7 +8,7 @@ const OWNER_SETUP_CODE = process.env.OWNER_SETUP_CODE || '';
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const MENU_TTL_MS = Number(process.env.MENU_TTL_MS || 300000);
-const APP_VERSION = '0.2.1';
+const APP_VERSION = '0.3.0';
 
 if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN');
@@ -23,9 +23,14 @@ const DEFAULTS = {
   telegram_group: '',
   telegram_channel: '',
   whitepaper: 'Coming soon.',
+  network: 'Solana',
+  launch_status: 'Preparing',
+  launch_date: 'TBA',
   contract: 'Coming soon.',
   buy: 'Available after launch.',
   chart: 'Available after launch.',
+  solscan: 'Available after launch.',
+  dex: 'Available after launch.',
   news: 'No announcements yet.',
   roadmap: '✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing',
   tokenomics: 'Network: Solana\nLaunch: Coming soon\nSupply: TBA',
@@ -193,9 +198,14 @@ const FIELD_LABELS = {
   whitepaper: 'Whitepaper',
   roadmap: 'Roadmap',
   tokenomics: 'Tokenomics',
+  network: 'Network',
+  launch_status: 'Launch status',
+  launch_date: 'Launch date',
   contract: 'Contract',
   chart: 'Chart link',
   buy: 'Buy link',
+  solscan: 'Solscan link',
+  dex: 'DEX link',
   website: 'Website',
   x: 'X account',
   telegram_group: 'Telegram Group',
@@ -244,11 +254,13 @@ async function showMenu(ctx, text, keyboard) {
 }
 function btn(text, data) { return Markup.button.callback(text, data); }
 function url(text, link) { return Markup.button.url(text, link); }
+function isUrl(value) { return /^https?:\/\//i.test(String(value || '').trim()); }
+function urlRow(label, value) { return isUrl(value) ? [url(label, value)] : []; }
 function nav(back = 'home') {
   return Markup.inlineKeyboard([[btn('⬅️ Back', back), btn('🏠 Home', 'home')], [btn('❌ Close', 'close')]]);
 }
 async function homeKeyboard(ctx) {
-  const rows = [[btn('📊 Market', 'market'), btn('🌍 Community', 'community')], [btn('📚 Project', 'project'), btn('❓ Help', 'help')]];
+  const rows = [[btn('🚀 Launch', 'launch'), btn('📊 Market', 'market')], [btn('🌍 Community', 'community'), btn('📚 Project', 'project')], [btn('❓ Help', 'help')]];
   if (await isOwnerId(userId(ctx)) && isPrivate(ctx)) rows.push([btn('🔒 Control Center', 'admin')]);
   rows.push([btn('❌ Close', 'close')]);
   return Markup.inlineKeyboard(rows);
@@ -259,6 +271,7 @@ async function homeText() {
 }
 function adminKeyboard() {
   return Markup.inlineKeyboard([
+    [btn('🚀 Launch Center', 'admin_launch')],
     [btn('📢 Content Manager', 'admin_content')],
     [btn('🌐 Project Settings', 'admin_project')],
     [btn('📊 Analytics', 'admin_stats'), btn('⚙️ System', 'admin_system')],
@@ -342,6 +355,15 @@ bot.on('callback_query', async (ctx) => {
   if (data === 'home') return showMenu(ctx, await homeText(), await homeKeyboard(ctx));
 
   const s = await allSettings();
+  if (data === 'launch') {
+    const rows = [
+      ...urlRow('📈 Chart', s.chart),
+      ...urlRow('🛒 Buy', s.buy),
+      ...urlRow('🔎 Solscan', s.solscan),
+      [btn('⬅️ Back', 'home'), btn('❌ Close', 'close')]
+    ];
+    return showMenu(ctx, `🚀 TRINTOPE Launch Center\n\nNetwork: ${s.network}\nStatus: ${s.launch_status}\nLaunch date: ${s.launch_date}\n\nContract:\n${s.contract}\n\nChart:\n${s.chart}\n\nBuy:\n${s.buy}`, Markup.inlineKeyboard(rows));
+  }
   if (data === 'market') return showMenu(ctx, `📊 Market\n\n💰 Price: Token is not live yet.\n📈 Chart: ${s.chart}\n🛒 Buy: ${s.buy}\n📄 Contract: ${s.contract}`, nav('home'));
   if (data === 'community') return showMenu(ctx, '🌍 Community\n\nUse only official TRINTOPE links.', Markup.inlineKeyboard([
     [url('🌐 Website', s.website), url('🐦 X', s.x)],
@@ -360,6 +382,14 @@ bot.on('callback_query', async (ctx) => {
   }
   if (!(await isOwnerId(userId(ctx)))) return;
 
+  if (data === 'admin_launch') return showMenu(ctx, `🚀 Launch Center\n\nPrepare everything needed for the Solana launch from one place.\n\nNetwork: ${s.network}\nLaunch status: ${s.launch_status}\nLaunch date: ${s.launch_date}\n\nContract:\n${s.contract}\n\nChart:\n${s.chart}\n\nBuy:\n${s.buy}\n\nSolscan:\n${s.solscan}`, Markup.inlineKeyboard([
+    [btn('🌐 Network', 'edit:network'), btn('📅 Launch Date', 'edit:launch_date')],
+    [btn('🚦 Launch Status', 'edit:launch_status'), btn('📄 Contract', 'edit:contract')],
+    [btn('📈 Chart', 'edit:chart'), btn('🛒 Buy', 'edit:buy')],
+    [btn('🔎 Solscan', 'edit:solscan'), btn('🧭 DEX', 'edit:dex')],
+    [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]
+  ]));
+
   if (data === 'admin_content') return showMenu(ctx, `📢 Content Manager\n\nUpdate public text shown inside the bot.\n\nWelcome:\n${s.welcome}\n\nNews:\n${s.news}\n\nFAQ:\n${s.faq}`, Markup.inlineKeyboard([
     [btn('✏️ Welcome', 'edit:welcome'), btn('✏️ News', 'edit:news')],
     [btn('✏️ FAQ', 'edit:faq'), btn('📜 Whitepaper', 'edit:whitepaper')],
@@ -369,8 +399,7 @@ bot.on('callback_query', async (ctx) => {
   if (data === 'admin_project') return showMenu(ctx, `🌐 Project Settings\n\n${statusIcon(s.status)} Status: ${s.status}\nWebsite: ${s.website}\nX: ${s.x}\nGroup: ${s.telegram_group || 'Not set'}\nChannel: ${s.telegram_channel || 'Not set'}\n\nRoadmap:\n${s.roadmap}\n\nTokenomics:\n${s.tokenomics}`, Markup.inlineKeyboard([
     [btn('🟢 Status', 'status_menu'), btn('🔗 Links', 'links_menu')],
     [btn('🗺 Roadmap', 'edit:roadmap'), btn('💎 Tokenomics', 'edit:tokenomics')],
-    [btn('📄 Contract', 'edit:contract'), btn('📈 Chart', 'edit:chart')],
-    [btn('🛒 Buy', 'edit:buy')],
+    [btn('🚀 Launch Center', 'admin_launch')],
     [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]
   ]));
 

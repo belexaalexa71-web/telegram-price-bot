@@ -1,6 +1,6 @@
 {
   "name": "trintope-bot",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Official TRINTOPE Telegram bot",
   "main": "src/bot.js",
   "type": "module",
