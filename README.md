@@ -1,18 +1,18 @@
-# TRINTOPE Bot Core v1
+# TRINTOPE Bot Admin Core v2
 
-Features:
-- private chat menu only
-- group commands are deleted when bot has Delete Messages permission
-- group users get temporary Open Bot button
-- one-message navigation in private chat
-- Back / Close
-- auto-delete menu after 5 minutes
-- secure admin panel visible only to ADMIN_IDS
+## Features
+- Private chat menu only
+- Group commands are deleted
+- Group users get temporary "Open Bot" button
+- Admin panel protected by ADMIN_IDS
+- Admin Stats
+- Admin Status switch: Building / Presale / Live
+- Official links section
 
-Railway variables:
-- BOT_TOKEN required
-- ADMIN_IDS required for admin panel, example: 123456789
-- WEBSITE_URL optional
-- X_URL optional
-- TELEGRAM_GROUP_URL optional
-- TELEGRAM_CHANNEL_URL optional
+## Railway variables
+Required:
+- BOT_TOKEN
+- ADMIN_IDS
+
+Example:
+ADMIN_IDS=123456789

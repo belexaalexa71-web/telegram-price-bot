@@ -1,165 +1,194 @@
-const TelegramBot = require('node-telegram-bot-api');
+import TelegramBot from 'node-telegram-bot-api';
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
+const TOKEN = process.env.BOT_TOKEN;
 const ADMIN_IDS = (process.env.ADMIN_IDS || '')
   .split(',')
   .map(x => x.trim())
   .filter(Boolean);
 
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://ea32b09e.trintope-universe.pages.dev/';
-const X_URL = process.env.X_URL || 'https://x.com/AndrejK40133234';
-const TELEGRAM_GROUP_URL = process.env.TELEGRAM_GROUP_URL || '';
-const TELEGRAM_CHANNEL_URL = process.env.TELEGRAM_CHANNEL_URL || '';
+if (!TOKEN) throw new Error('BOT_TOKEN is missing');
 
-if (!BOT_TOKEN) {
-  console.error('BOT_TOKEN is missing');
-  process.exit(1);
-}
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const SITE = 'https://ea32b09e.trintope-universe.pages.dev/';
+const X_LINK = 'https://x.com/AndrejK40133234';
+
+const userIds = new Set();
+let projectStatus = 'Building';
+let lastNews = 'No announcements yet.';
+
 const sessions = new Map();
 
-const isAdmin = (userId) => ADMIN_IDS.includes(String(userId));
-const isPrivate = (msgOrQuery) => {
-  const chat = msgOrQuery.message ? msgOrQuery.message.chat : msgOrQuery.chat;
-  return chat && chat.type === 'private';
-};
+function isAdmin(userId) {
+  return ADMIN_IDS.includes(String(userId));
+}
 
-function kb(rows) {
+function isPrivate(msgOrQuery) {
+  const chat = msgOrQuery.message?.chat || msgOrQuery.chat;
+  return chat?.type === 'private';
+}
+
+function keyboard(rows) {
   return { inline_keyboard: rows };
 }
 
 function homeKeyboard(userId) {
   const rows = [
-    [{ text: '📊 Market', callback_data: 'market' }, { text: '📚 Project', callback_data: 'project' }],
-    [{ text: '🌍 Community', callback_data: 'community' }, { text: '❓ FAQ', callback_data: 'faq' }],
-    [{ text: '❌ Close', callback_data: 'close' }]
+    [
+      { text: '📊 Market', callback_data: 'market' },
+      { text: '📚 Project', callback_data: 'project' }
+    ],
+    [
+      { text: '🌍 Community', callback_data: 'community' },
+      { text: '⚙️ More', callback_data: 'more' }
+    ]
   ];
-  if (isAdmin(userId)) rows.splice(2, 0, [{ text: '🔒 Admin Panel', callback_data: 'admin' }]);
-  return kb(rows);
+  if (isAdmin(userId)) rows.push([{ text: '🔒 Admin Panel', callback_data: 'admin' }]);
+  rows.push([{ text: '❌ Close', callback_data: 'close' }]);
+  return keyboard(rows);
 }
 
-const text = {
-  home: `🚀 *TRINTOPE*\n\nOfficial Project Bot\n\n🟢 Status: *Building*\n\nChoose a section below.`,
-  market: `📊 *Market*\n\nToken is not live yet.\n\nPrice, chart and buy links will be available after launch.`,
-  price: `💰 *Price*\n\nToken is not live yet.\nPrice tracking will become available after launch.`,
-  chart: `📈 *Chart*\n\nChart will be available after launch.`,
-  buy: `🛒 *Buy*\n\nTrading is not available yet.\nStay tuned.`,
-  project: `📚 *Project*\n\nExplore TRINTOPE roadmap, tokenomics and news.`,
-  news: `📢 *News*\n\nNo announcements yet.\nFollow X for updates.`,
-  roadmap: `🗺 *Roadmap*\n\n✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing\n⬜ CEX Listing`,
-  tokenomics: `💎 *Tokenomics*\n\nComing soon.\nTokenomics will be published before launch.`,
-  faq: `❓ *FAQ*\n\n*What is TRINTOPE?*\nA community-driven Web3 project.\n\n*When launch?*\nThe launch date will be announced soon.\n\n*Where can I buy?*\nThe buy link will be available after launch.`,
-  community: `🌍 *Community*\n\nUse only official TRINTOPE links.`,
-  admin: `🔒 *Admin Panel*\n\nAccess granted.\n\nThis panel is visible only to ADMIN_IDS and works only in private chat.`,
-  adminStub: `⚙️ *Admin Tool*\n\nThis section is prepared. Next version will allow editing content directly from Telegram.`
-};
-
-const keyboards = {
-  market: kb([
-    [{ text: '💰 Price', callback_data: 'price' }, { text: '📈 Chart', callback_data: 'chart' }],
-    [{ text: '🛒 Buy', callback_data: 'buy' }],
-    [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]
-  ]),
-  project: kb([
-    [{ text: '📢 News', callback_data: 'news' }, { text: '🗺 Roadmap', callback_data: 'roadmap' }],
-    [{ text: '💎 Tokenomics', callback_data: 'tokenomics' }],
-    [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]
-  ]),
-  community: kb([
-    [{ text: '🌐 Website', url: WEBSITE_URL }, { text: '🐦 X', url: X_URL }],
-    ...(TELEGRAM_GROUP_URL ? [[{ text: '💬 Group', url: TELEGRAM_GROUP_URL }]] : []),
-    ...(TELEGRAM_CHANNEL_URL ? [[{ text: '📢 Channel', url: TELEGRAM_CHANNEL_URL }]] : []),
-    [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]
-  ]),
-  admin: kb([
-    [{ text: '📢 Publish News', callback_data: 'admin_stub' }, { text: '🟢 Status', callback_data: 'admin_stub' }],
-    [{ text: '🔗 Links', callback_data: 'admin_stub' }, { text: '📊 Stats', callback_data: 'admin_stub' }],
-    [{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]
-  ]),
-  back: kb([[{ text: '⬅ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }]])
-};
-
-function remember(chatId, messageId) {
-  const old = sessions.get(chatId);
-  if (old && old !== messageId) bot.deleteMessage(chatId, old).catch(() => {});
-  sessions.set(chatId, messageId);
-  setTimeout(() => {
-    if (sessions.get(chatId) === messageId) {
-      bot.deleteMessage(chatId, messageId).catch(() => {});
-      sessions.delete(chatId);
+function screen(name, userId) {
+  const back = [{ text: '⬅️ Back', callback_data: 'home' }, { text: '❌ Close', callback_data: 'close' }];
+  const screens = {
+    home: {
+      text: `🚀 TRINTOPE\n\nOfficial Project Bot\n\n🟢 Status: ${projectStatus}\n\nChoose an option below.`,
+      reply_markup: homeKeyboard(userId)
+    },
+    market: {
+      text: `📊 Market\n\n💰 Price: Token is not live yet.\n📈 Chart: Available after launch.\n🛒 Buy: Trading is not available yet.`,
+      reply_markup: keyboard([back])
+    },
+    project: {
+      text: `📚 Project\n\n📢 News:\n${lastNews}\n\n🗺 Roadmap:\n✅ Website\n✅ Telegram Bot\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n\n💎 Tokenomics: Coming soon.`,
+      reply_markup: keyboard([back])
+    },
+    community: {
+      text: `🌍 Community\n\nUse only official TRINTOPE links.`,
+      reply_markup: keyboard([
+        [{ text: '🌐 Website', url: SITE }],
+        [{ text: '🐦 X', url: X_LINK }],
+        back
+      ])
+    },
+    more: {
+      text: `⚙️ More\n\n❓ FAQ\nTRINTOPE is a community-driven Web3 project.\n\n📞 Support\nContact us through official X.`,
+      reply_markup: keyboard([back])
+    },
+    admin: {
+      text: `🔒 Admin Panel\n\nOnly authorized admin IDs can see this panel.\n\nUsers: ${userIds.size}\nStatus: ${projectStatus}`,
+      reply_markup: keyboard([
+        [{ text: '📊 Stats', callback_data: 'admin_stats' }, { text: '🟢 Status', callback_data: 'admin_status' }],
+        [{ text: '📢 News', callback_data: 'admin_news' }, { text: '🔗 Links', callback_data: 'admin_links' }],
+        back
+      ])
+    },
+    admin_stats: {
+      text: `📊 Bot Statistics\n\nUsers who opened bot: ${userIds.size}\nProject status: ${projectStatus}\n\nMore analytics can be added later.`,
+      reply_markup: keyboard([[{ text: '⬅️ Admin', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]])
+    },
+    admin_status: {
+      text: `🟢 Change Project Status\n\nCurrent: ${projectStatus}\n\nChoose new status:`,
+      reply_markup: keyboard([
+        [{ text: '🟢 Building', callback_data: 'set_status:Building' }],
+        [{ text: '🟡 Presale', callback_data: 'set_status:Presale' }],
+        [{ text: '🚀 Live', callback_data: 'set_status:Live' }],
+        [{ text: '⬅️ Admin', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]
+      ])
+    },
+    admin_news: {
+      text: `📢 News\n\nCurrent news:\n${lastNews}\n\nEditing news directly from Telegram will be added in the next version.`,
+      reply_markup: keyboard([[{ text: '⬅️ Admin', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]])
+    },
+    admin_links: {
+      text: `🔗 Official Links\n\nWebsite:\n${SITE}\n\nX:\n${X_LINK}`,
+      reply_markup: keyboard([[{ text: '⬅️ Admin', callback_data: 'admin' }, { text: '❌ Close', callback_data: 'close' }]])
     }
-  }, 5 * 60 * 1000);
+  };
+  return screens[name] || screens.home;
 }
 
-async function sendOrEdit(chatId, messageId, body, keyboard, userId) {
-  const options = { parse_mode: 'Markdown', reply_markup: keyboard || homeKeyboard(userId) };
-  if (messageId) {
-    return bot.editMessageText(body, { chat_id: chatId, message_id: messageId, ...options }).catch(async () => {
-      const sent = await bot.sendMessage(chatId, body, options);
-      remember(chatId, sent.message_id);
-      return sent;
-    });
-  }
-  const sent = await bot.sendMessage(chatId, body, options);
-  remember(chatId, sent.message_id);
-  return sent;
+async function deleteLater(chatId, messageId, ms = 12000) {
+  setTimeout(() => bot.deleteMessage(chatId, messageId).catch(() => {}), ms);
 }
 
-async function groupRedirect(msg) {
+async function showPrivateMenu(msg) {
   const chatId = msg.chat.id;
-  bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-  const me = await bot.getMe();
-  const sent = await bot.sendMessage(chatId, '🔒 Open the official TRINTOPE Bot in private chat.', {
-    reply_markup: kb([[{ text: '🚀 Open TRINTOPE Bot', url: `https://t.me/${me.username}` }]])
-  }).catch(() => null);
-  if (sent) setTimeout(() => bot.deleteMessage(chatId, sent.message_id).catch(() => {}), 15000);
+  const userId = msg.from.id;
+  userIds.add(userId);
+
+  const previous = sessions.get(userId);
+  if (previous) await bot.deleteMessage(chatId, previous).catch(() => {});
+
+  const sent = await bot.sendMessage(chatId, screen('home', userId).text, screen('home', userId));
+  sessions.set(userId, sent.message_id);
 }
-
-bot.onText(/\/start/, async (msg) => {
-  if (msg.chat.type !== 'private') return groupRedirect(msg);
-  await sendOrEdit(msg.chat.id, null, text.home, homeKeyboard(msg.from.id), msg.from.id);
-});
-
-bot.onText(/\/help/, async (msg) => {
-  if (msg.chat.type !== 'private') return groupRedirect(msg);
-  await sendOrEdit(msg.chat.id, null, text.home, homeKeyboard(msg.from.id), msg.from.id);
-});
 
 bot.onText(/\/id/, async (msg) => {
-  if (msg.chat.type !== 'private') return groupRedirect(msg);
+  if (msg.chat.type !== 'private') return;
   await bot.sendMessage(msg.chat.id, `Your Telegram ID: ${msg.from.id}`);
 });
 
-bot.on('message', async (msg) => {
-  if (msg.chat.type !== 'private' && msg.text && msg.text.startsWith('/')) return groupRedirect(msg);
+bot.onText(/\/start|\/help/, async (msg) => {
+  userIds.add(msg.from.id);
+
+  if (msg.chat.type !== 'private') {
+    await bot.deleteMessage(msg.chat.id, msg.message_id).catch(() => {});
+    const me = await bot.getMe();
+    const sent = await bot.sendMessage(msg.chat.id, '🔒 Open the official TRINTOPE Bot in private chat.', {
+      reply_markup: keyboard([[{ text: '🤖 Open Bot', url: `https://t.me/${me.username}` }]])
+    });
+    deleteLater(msg.chat.id, sent.message_id, 10000);
+    return;
+  }
+
+  await showPrivateMenu(msg);
 });
 
 bot.on('callback_query', async (q) => {
-  const chatId = q.message.chat.id;
   const userId = q.from.id;
-  if (q.message.chat.type !== 'private') {
-    await bot.answerCallbackQuery(q.id, { text: 'Open the bot in private chat.' });
-    return;
-  }
+  userIds.add(userId);
+
+  const chatId = q.message.chat.id;
+  const messageId = q.message.message_id;
+  const data = q.data;
+
   await bot.answerCallbackQuery(q.id).catch(() => {});
-  if (q.data === 'close') {
-    await bot.deleteMessage(chatId, q.message.message_id).catch(() => {});
-    sessions.delete(chatId);
+
+  if (data === 'close') {
+    await bot.deleteMessage(chatId, messageId).catch(() => {});
+    sessions.delete(userId);
     return;
   }
-  if (q.data === 'home') return sendOrEdit(chatId, q.message.message_id, text.home, homeKeyboard(userId), userId);
-  if (q.data === 'market') return sendOrEdit(chatId, q.message.message_id, text.market, keyboards.market, userId);
-  if (q.data === 'project') return sendOrEdit(chatId, q.message.message_id, text.project, keyboards.project, userId);
-  if (q.data === 'community') return sendOrEdit(chatId, q.message.message_id, text.community, keyboards.community, userId);
-  if (q.data === 'admin') {
-    if (!isAdmin(userId)) return sendOrEdit(chatId, q.message.message_id, 'Access denied.', keyboards.back, userId);
-    return sendOrEdit(chatId, q.message.message_id, text.admin, keyboards.admin, userId);
+
+  if (data.startsWith('admin') || data.startsWith('set_status')) {
+    if (!isAdmin(userId) || q.message.chat.type !== 'private') {
+      await bot.answerCallbackQuery(q.id, { text: 'Access denied', show_alert: true }).catch(() => {});
+      return;
+    }
   }
-  if (q.data === 'admin_stub') return sendOrEdit(chatId, q.message.message_id, text.adminStub, keyboards.admin, userId);
-  const simplePages = ['price', 'chart', 'buy', 'news', 'roadmap', 'tokenomics', 'faq'];
-  if (simplePages.includes(q.data)) return sendOrEdit(chatId, q.message.message_id, text[q.data], keyboards.back, userId);
+
+  if (data.startsWith('set_status:')) {
+    projectStatus = data.split(':')[1];
+    await bot.editMessageText(`✅ Status updated to: ${projectStatus}`, {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: keyboard([[{ text: '⬅️ Admin', callback_data: 'admin' }, { text: '🏠 Home', callback_data: 'home' }]])
+    }).catch(() => {});
+    return;
+  }
+
+  const s = screen(data, userId);
+  await bot.editMessageText(s.text, {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: s.reply_markup
+  }).catch(() => {});
 });
 
-bot.on('polling_error', (err) => console.error('Polling error:', err.message));
-console.log('TRINTOPE Bot Core is running');
+bot.on('message', async (msg) => {
+  if (!msg.text || msg.text.startsWith('/')) return;
+  if (msg.chat.type !== 'private') return;
+});
+
+console.log('TRINTOPE Bot Admin Core v2 is running');
