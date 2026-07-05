@@ -1,31 +1,90 @@
-# TRINTOPE Bot v2.5 Admin Panel
+# TRINTOPE Telegram Bot v3.0 Final
 
-## Railway variables
-Required:
-- `BOT_TOKEN` — token from BotFather
-- `OWNER_ID` — your Telegram numeric ID
+Финальная стабильная версия бота TRINTOPE после всех исправлений.
 
-Get OWNER_ID by opening Telegram bot @userinfobot and copying your numeric ID.
+## Что умеет
 
-## Owner commands in private chat
-- `/admin` — open admin panel
-- `/setstatus LIVE`
-- `/setchain BSC`
-- `/setcontract 0x...`
-- `/setbuy https://...`
-- `/setchart https://...`
-- `/setnews Text`
-- `/setwebsite https://...`
-- `/setx https://x.com/...`
-- `/settokenomics Text`
-- `/setroadmap Text`
-- `/setfaq Text`
-- `/setsupport Text`
+- Работает в личке с пользователем.
+- В группе удаляет команды и не засоряет чат.
+- Если пользователь пишет команду в группе, бот пытается отправить меню в личку.
+- Красивое меню с кнопками.
+- Админ-панель `/admin` только для владельца/админов.
+- Управление через Telegram без GitHub/Railway:
+  - статус проекта;
+  - контракт токена;
+  - сеть;
+  - сайт;
+  - X;
+  - Buy link;
+  - Chart link;
+  - новости;
+  - roadmap;
+  - tokenomics;
+  - FAQ;
+  - support;
+  - community links;
+  - broadcast всем пользователям.
+- Команда `/myid` показывает Telegram ID.
+- Команда `/setcontract CONTRACT` сохраняет контракт.
 
-## Group behavior
-- User commands in groups are deleted.
-- Bot does not post public menus in the group.
-- If the user already opened the bot, the menu is sent privately.
-- If not, a temporary Open Bot button appears and is deleted after 8 seconds.
+## Railway Variables
 
-Bot needs admin right: Delete messages.
+Обязательные:
+
+```env
+BOT_TOKEN=токен от BotFather
+OWNER_ID=твой Telegram ID числом
+```
+
+Желательно:
+
+```env
+DATABASE_URL=PostgreSQL URL от Railway
+```
+
+Дополнительно:
+
+```env
+ADMIN_IDS=123,456,789
+```
+
+## Важно для группы
+
+Чтобы бот удалял команды в группе, выдай ему права администратора:
+
+- Delete messages / Удалять сообщения
+
+## Проверка после загрузки
+
+1. Railway должен показать в логах:
+
+```text
+TRINTOPE Bot v3.0.0-final is running
+```
+
+2. В личке бота:
+
+```text
+/start
+/admin
+/myid
+```
+
+3. В группе команда `/start` должна удаляться и не засорять чат.
+
+## Как добавить контракт после запуска токена
+
+В личке бота:
+
+```text
+/admin
+```
+
+Нажать `🪙 Contract` и отправить адрес контракта.
+
+Или командой:
+
+```text
+/setcontract CONTRACT_ADDRESS
+```
+

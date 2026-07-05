@@ -1,1 +1,17 @@
-{"name":"trintope-bot","version":"2.5.0","main":"index.js","scripts":{"start":"node index.js"},"dependencies":{"node-telegram-bot-api":"^0.66.0"},"engines":{"node":">=18"}}
+{
+  "name": "trintope-telegram-bot-v3",
+  "version": "3.0.0",
+  "description": "Final TRINTOPE Telegram bot with private user menu, silent group behavior and Telegram admin panel.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "pg": "^8.12.0"
+  }
+}
