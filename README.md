@@ -1,32 +1,26 @@
-# TRINTOPE Bot — Control Center v1
+# TRINTOPE Bot Full DB v1
+
+Features:
+- Private chat menu with inline navigation
+- Clean group mode: commands are deleted and users are sent to private chat
+- Protected owner setup with OWNER_SETUP_CODE
+- Control Center visible only to the owner
+- Edit Website, X, Welcome, News, Roadmap, Tokenomics, FAQ from Telegram
+- PostgreSQL support via Railway DATABASE_URL
+- JSON fallback if DATABASE_URL is not configured
 
 ## Railway variables
-
 Required:
+- BOT_TOKEN
+- OWNER_SETUP_CODE
 
-- `BOT_TOKEN` — token from BotFather
-- `OWNER_SETUP_CODE` — secret code for first owner setup
-
-Optional:
-
-- `WEBSITE_URL` — default website
-- `X_URL` — default X/Twitter link
-- `MENU_TTL_MS` — auto-delete menu timeout, default `300000` (5 minutes)
+Recommended:
+- DATABASE_URL (Railway PostgreSQL provides this automatically)
+- BOT_USERNAME
+- MENU_TTL_MS
 
 ## Owner setup
+In private chat:
+`/setup_owner YOUR_SECRET_CODE`
 
-In private chat with the bot:
-
-```text
-/setup_owner YOUR_SECRET_CODE
-```
-
-After owner activation, `/start` will show **TRINTOPE Control Center** only to the owner.
-
-## Group behavior
-
-In groups, bot deletes slash commands when it has `Delete messages` permission and sends a short private-chat button.
-
-## User behavior
-
-Private chat uses one editable menu message. Commands are deleted where possible. Close deletes the menu.
+Then send `/start`.
