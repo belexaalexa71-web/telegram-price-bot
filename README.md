@@ -1,27 +1,33 @@
-# TRINTOPE Bot Refactor v0.1.1
+# TRINTOPE Bot v0.2.0 CMS Foundation
 
-This update is a real refactor: admin logic has been moved out of the callback handler into dedicated admin modules.
+Stable core + Telegram Control Center.
 
 ## What changed
 
-- `src/admin/panel.js` now contains Control Center text and admin actions.
-- `src/admin/router.js` now routes admin button callbacks.
-- `src/handlers/callback.js` is cleaner and only handles public navigation plus handoff to admin router.
-- No empty admin folder.
-- Existing behavior should remain the same.
+- Project settings can be edited directly from Telegram.
+- Supports PostgreSQL through `DATABASE_URL`.
+- Falls back to `data.json` if PostgreSQL is unavailable.
+- Stores owners, users, settings and logs.
+- Keeps groups clean: group commands are deleted and users are redirected to private chat.
 
 ## Required Railway variables
 
 - `BOT_TOKEN`
 - `OWNER_SETUP_CODE`
+- `DATABASE_URL` recommended
+- `ADMIN_IDS` optional fallback owner list
+- `MENU_TTL_MS` optional
 
-## Test after deploy
+## Deploy
 
-1. Private chat: `/start`
-2. Open `Control Center`
-3. Check `Status`, `Links`, `Stats`, `Logs`
-4. Group: send `/start` and confirm it stays clean
+Upload the full project to GitHub and wait for Railway to redeploy.
 
-## Version
+Expected logs:
 
-`0.1.1`
+```text
+✅ Connected to PostgreSQL
+✅ Database initialized
+✅ TRINTOPE Bot v0.2.0 launched
+```
+
+If PostgreSQL is not reachable, the bot will still run using `data.json`.
