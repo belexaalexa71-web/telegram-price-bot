@@ -1,9 +1,17 @@
 {
   "name": "trintope-bot",
-  "version": "0.2.0",
-  "description": "TRINTOPE Telegram bot with PostgreSQL database foundation",
-  "main": "index.js",
-  "scripts": { "start": "node index.js" },
-  "dependencies": { "telegraf": "^4.16.3", "pg": "^8.12.0" },
-  "engines": { "node": ">=18" }
+  "version": "0.1.1",
+  "description": "Official TRINTOPE Telegram bot",
+  "main": "src/bot.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/bot.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

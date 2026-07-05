@@ -1,20 +1,13 @@
-function required(name) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
-  return value;
-}
+import 'dotenv/config';
 
-function parseIds(value = '') {
-  return value
-    .split(',')
-    .map((id) => id.trim())
-    .filter(Boolean);
-}
-
-module.exports = {
-  botToken: required('BOT_TOKEN'),
-  databaseUrl: process.env.DATABASE_URL || '',
+export const config = {
+  botToken: process.env.BOT_TOKEN,
   ownerSetupCode: process.env.OWNER_SETUP_CODE || '',
-  adminIds: parseIds(process.env.ADMIN_IDS || ''),
+  websiteUrl: process.env.WEBSITE_URL || 'https://ea32b09e.trintope-universe.pages.dev/',
+  xUrl: process.env.X_URL || 'https://x.com/AndrejK40133234',
   menuTtlMs: Number(process.env.MENU_TTL_MS || 10 * 60 * 1000),
 };
+
+if (!config.botToken) {
+  throw new Error('BOT_TOKEN is required');
+}
