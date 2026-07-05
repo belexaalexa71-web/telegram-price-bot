@@ -1,30 +1,31 @@
-# TRINTOPE Bot v0.3.0 — Launch Center
+# TRINTOPE Telegram Bot v2.1
 
-This update keeps the existing stable Core and Control Center, and adds a dedicated Launch Center for the Solana launch.
+Official Telegram bot for the TRINTOPE project.
 
-## Added
-- Public 🚀 Launch screen
-- Owner-only 🚀 Launch Center inside Control Center
-- Editable fields from Telegram:
-  - Network
-  - Launch status
-  - Launch date
-  - Contract
-  - Chart link
-  - Buy link
-  - Solscan link
-  - DEX link
-- Version updated to 0.3.0
+## What is included
 
-## Not changed
-- Owner protection
-- Group clean mode
-- Back / Close navigation
-- PostgreSQL / data.json fallback
+- Main menu with buttons
+- Website button
+- X button
+- Price placeholder
+- Chart placeholder
+- Buy placeholder
+- Official links
+- Auto-delete slash commands in groups
 
-## Check after deployment
-1. Open `/start` in private chat.
-2. Press 🚀 Launch.
-3. Press 🔒 Control Center → 🚀 Launch Center.
-4. Edit one harmless field, for example Launch date.
-5. Confirm that the public 🚀 Launch screen shows the updated value.
+## Commands
+
+/start - Open main menu
+/price - Token price
+/chart - Price chart
+/buy - Buy token
+/links - Official links
+/help - Help
+
+## Important
+
+For auto-delete of commands in a group, make the bot an admin and give it permission to delete messages.
+
+## Environment variable
+
+BOT_TOKEN=your_token_from_BotFather
