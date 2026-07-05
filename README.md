@@ -1,49 +1,19 @@
-# TRINTOPE Bot Security Core v1
-
-## Что есть внутри
-
-- Личное меню бота.
-- В группе меню не показывается.
-- Команды в группе удаляются, если у бота есть право Delete messages.
-- Кнопка Open Bot для перехода в личку.
-- Owner setup через OWNER_SETUP_CODE.
-- Admin Panel только для владельца / админов.
-- Stats, Status, Links, Logs.
+# TRINTOPE Bot Full v1
 
 ## Railway variables
-
-Required:
-
-```env
-BOT_TOKEN=your_bot_token
-```
-
-Recommended:
-
-```env
-OWNER_SETUP_CODE=your_secret_owner_code
-ADMIN_IDS=your_telegram_id
-```
+- BOT_TOKEN — Telegram BotFather token
+- OWNER_SETUP_CODE — secret one-time owner code
+- ADMIN_IDS — optional comma-separated admin IDs
+- BOT_USERNAME — optional bot username for group Open Bot button
 
 ## Owner setup
+In private chat with bot:
+`/setup_owner YOUR_SECRET_CODE`
 
-В личке с ботом:
-
-```text
-/setup_owner YOUR_SECRET_CODE
-```
-
-После этого отправь:
-
-```text
-/start
-```
-
-## Команды
-
-```text
-/start
-/help
-/id
-/setup_owner SECRET
-```
+## Features
+- Private menu only
+- Clean group behavior
+- Protected Admin Panel
+- Edit status, links, welcome, news, roadmap, tokenomics, FAQ from Telegram
+- User stats
+- Close / Back navigation
