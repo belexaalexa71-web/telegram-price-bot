@@ -1,23 +1,31 @@
-import { Telegraf } from 'telegraf';
-import { config } from './config.js';
-import { startCommand } from './commands/start.js';
-import { idCommand, setupOwnerCommand } from './commands/owner.js';
-import { callbackHandler } from './handlers/callback.js';
-import { textHandler } from './handlers/messages.js';
+const { Telegraf } = require('telegraf');
+const { botToken } = require('./config');
+const { testConnection } = require('./database/connection');
+const { initDatabase } = require('./database/migrations');
+const { handleCallback } = require('./handlers/callbacks');
+const { handleStart, handleId, handleSetupOwner, handleText } = require('./handlers/messages');
 
-const bot = new Telegraf(config.botToken);
+async function startBot() {
+  await testConnection();
+  await initDatabase();
 
-bot.start(startCommand);
-bot.command('help', startCommand);
-bot.command('id', idCommand);
-bot.command('setup_owner', setupOwnerCommand);
-bot.on('callback_query', callbackHandler);
-bot.on('text', textHandler);
+  const bot = new Telegraf(botToken);
 
-bot.catch((err) => console.error('Bot error:', err));
+  bot.start(handleStart);
+  bot.command('id', handleId);
+  bot.command('setup_owner', handleSetupOwner);
+  bot.on('callback_query', handleCallback);
+  bot.on('text', handleText);
 
-bot.launch();
-console.log('TRINTOPE Bot started');
+  bot.catch((error, ctx) => {
+    console.error(`Bot error for update ${ctx.update?.update_id}:`, error);
+  });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  await bot.launch();
+  console.log('✅ TRINTOPE Bot v0.2.0 launched');
+
+  process.once('SIGINT', () => bot.stop('SIGINT'));
+  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+}
+
+module.exports = { startBot };
