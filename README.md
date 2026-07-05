@@ -1,28 +1,31 @@
-# TRINTOPE Telegram Bot v2.4
+# TRINTOPE Bot v2.5 Admin Panel
 
-This version keeps the group clean:
+## Railway variables
+Required:
+- `BOT_TOKEN` — token from BotFather
+- `OWNER_ID` — your Telegram numeric ID
 
-- Deletes user commands in groups.
-- Does not post normal bot answers in groups.
-- If the user has already opened the bot before, the menu is sent privately.
-- If the user has not opened the bot before, Telegram blocks private messages. In that case the bot sends one silent temporary button: **Open TRINTOPE Bot**, then deletes it automatically.
-- Uses `disable_notification: true` for the temporary group prompt.
+Get OWNER_ID by opening Telegram bot @userinfobot and copying your numeric ID.
 
-## Required Railway variable
+## Owner commands in private chat
+- `/admin` — open admin panel
+- `/setstatus LIVE`
+- `/setchain BSC`
+- `/setcontract 0x...`
+- `/setbuy https://...`
+- `/setchart https://...`
+- `/setnews Text`
+- `/setwebsite https://...`
+- `/setx https://x.com/...`
+- `/settokenomics Text`
+- `/setroadmap Text`
+- `/setfaq Text`
+- `/setsupport Text`
 
-BOT_TOKEN=your_token_from_BotFather
+## Group behavior
+- User commands in groups are deleted.
+- Bot does not post public menus in the group.
+- If the user already opened the bot, the menu is sent privately.
+- If not, a temporary Open Bot button appears and is deleted after 8 seconds.
 
-## Optional variables
-
-PROJECT_NAME=TRINTOPE
-WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/
-X_URL=https://x.com/AndrejK40133234
-PROJECT_STATUS=Building
-GROUP_SILENT_MODE=true
-GROUP_PROMPT_DELETE_SECONDS=8
-
-## Important
-
-In the Telegram group, the bot must be admin and must have permission:
-
-- Delete messages / Удалять сообщения
+Bot needs admin right: Delete messages.

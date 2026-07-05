@@ -1,15 +1,1 @@
-{
-  "name": "trintope-telegram-bot",
-  "version": "2.3.0",
-  "description": "Official TRINTOPE Telegram bot - private menu, clean group mode",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "node-telegram-bot-api": "^0.66.0"
-  },
-  "engines": {
-    "node": ">=18"
-  }
-}
+{"name":"trintope-bot","version":"2.5.0","main":"index.js","scripts":{"start":"node index.js"},"dependencies":{"node-telegram-bot-api":"^0.66.0"},"engines":{"node":">=18"}}

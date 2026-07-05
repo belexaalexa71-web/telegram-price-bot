@@ -1,239 +1,139 @@
 const TelegramBot = require('node-telegram-bot-api');
+const fs = require('fs');
+const path = require('path');
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const PROJECT_NAME = process.env.PROJECT_NAME || 'TRINTOPE';
-const WEBSITE_URL = process.env.WEBSITE_URL || 'https://ea32b09e.trintope-universe.pages.dev/';
-const X_URL = process.env.X_URL || 'https://x.com/AndrejK40133234';
-const CHART_URL = process.env.CHART_URL || '';
-const BUY_URL = process.env.BUY_URL || '';
-const TELEGRAM_GROUP_URL = process.env.TELEGRAM_GROUP_URL || '';
-const TELEGRAM_CHANNEL_URL = process.env.TELEGRAM_CHANNEL_URL || '';
-const STATUS = process.env.PROJECT_STATUS || 'Building';
-const GROUP_SILENT_MODE = (process.env.GROUP_SILENT_MODE || 'true').toLowerCase() !== 'false';
-let BOT_USERNAME = process.env.BOT_USERNAME || '';
-const GROUP_PROMPT_DELETE_SECONDS = Number(process.env.GROUP_PROMPT_DELETE_SECONDS || 8);
-
-if (!BOT_TOKEN) {
-  console.error('ERROR: BOT_TOKEN is missing. Add BOT_TOKEN in Railway Variables.');
-  process.exit(1);
-}
+const OWNER_ID = process.env.OWNER_ID || '';
+if (!BOT_TOKEN) throw new Error('BOT_TOKEN is required');
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const DATA_FILE = path.join(__dirname, 'data.json');
 
-bot.getMe()
-  .then((me) => {
-    BOT_USERNAME = BOT_USERNAME || me.username;
-    console.log(`Bot username: @${BOT_USERNAME}`);
-  })
-  .catch((err) => console.log('Could not get bot username:', err.message));
-
-function isGroup(chat) {
-  return chat && (chat.type === 'group' || chat.type === 'supergroup');
-}
-
-async function safeDelete(chatId, messageId) {
-  try {
-    await bot.deleteMessage(chatId, messageId);
-  } catch (err) {
-    console.log('Could not delete message:', err.response?.body?.description || err.message);
-  }
-}
-
-function mainMenuKeyboard() {
-  const rows = [
-    [
-      { text: '💰 Price', callback_data: 'price' },
-      { text: '📈 Chart', callback_data: 'chart' }
-    ],
-    [
-      { text: '🛒 Buy', callback_data: 'buy' },
-      { text: '🌐 Website', url: WEBSITE_URL }
-    ],
-    [
-      { text: '🐦 X', url: X_URL },
-      { text: '❓ Help', callback_data: 'help' }
-    ],
-    [
-      { text: '🔗 Official Links', callback_data: 'links' }
-    ]
-  ];
-
-  return { inline_keyboard: rows };
-}
-
-function homeText() {
-  return `🚀 Welcome to ${PROJECT_NAME}\n\nOfficial Project Bot\n\n🟢 Status: ${STATUS}\n\nChoose an option below 👇`;
-}
-
-const sections = {
-  price: `💰 Price\n\nToken is not live yet.\n\nPrice tracking will become available after launch.`,
-  chart: CHART_URL
-    ? `📈 Chart\n\n${CHART_URL}`
-    : `📈 Chart\n\nChart will be available after launch.`,
-  buy: BUY_URL
-    ? `🛒 Buy\n\n${BUY_URL}`
-    : `🛒 Buy\n\nTrading is not available yet.\n\nStay tuned for the official launch.`,
-  help: `❓ Help\n\nThis is the official ${PROJECT_NAME} bot.\n\nUse it to access official project links, future token information, chart, buy links and updates.`,
-  links: `🔗 Official Links\n\n🌐 Website:\n${WEBSITE_URL}\n\n🐦 X:\n${X_URL}${TELEGRAM_GROUP_URL ? `\n\n💬 Telegram Group:\n${TELEGRAM_GROUP_URL}` : ''}${TELEGRAM_CHANNEL_URL ? `\n\n📢 Telegram Channel:\n${TELEGRAM_CHANNEL_URL}` : ''}\n\nAlways use only official links.`
+const defaults = {
+  project: 'TRINTOPE',
+  status: 'Building',
+  website: 'https://ea32b09e.trintope-universe.pages.dev/',
+  x: 'https://x.com/AndrejK40133234',
+  chain: 'Coming soon',
+  contract: 'Coming soon',
+  chart: '',
+  buy: '',
+  news: 'No announcements yet.',
+  tokenomics: 'Coming soon.',
+  roadmap: '✅ Website\n✅ Telegram Bot\n✅ X\n🔄 Community\n⬜ Token Launch\n⬜ DEX Listing\n⬜ Marketing\n⬜ CEX Listing',
+  faq: 'What is TRINTOPE?\nA community-driven Web3 project.\n\nWhen launch?\nThe launch date will be announced soon.\n\nWhere can I buy?\nThe buy link will be available after launch.',
+  support: 'Need help? Contact us via X.'
 };
 
-async function sendPrivateMenu(userId) {
-  return bot.sendMessage(userId, homeText(), {
-    reply_markup: mainMenuKeyboard(),
-    disable_web_page_preview: true
-  });
+function loadData() {
+  try { return { ...defaults, ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; }
+  catch { return { ...defaults }; }
 }
+function saveData(data) { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); }
+let data = loadData();
 
-async function sendPrivateSection(userId, key) {
-  const text = sections[key] || homeText();
-  return bot.sendMessage(userId, text, {
-    reply_markup: mainMenuKeyboard(),
-    disable_web_page_preview: true
-  });
+function isOwner(msgOrQuery) {
+  const id = String(msgOrQuery.from?.id || '');
+  return OWNER_ID && id === String(OWNER_ID);
 }
-
-async function sendTemporaryOpenBotPrompt(chatId, userFirstName) {
-  if (!BOT_USERNAME) return;
-
-  const sent = await bot.sendMessage(
-    chatId,
-    `👋 ${userFirstName || 'Open'} — use the bot in private chat.`,
-    {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: '🚀 Open TRINTOPE Bot', url: `https://t.me/${BOT_USERNAME}?start=group` }
-        ]]
-      },
-      disable_notification: true,
-      disable_web_page_preview: true
-    }
-  );
-
-  setTimeout(() => {
-    safeDelete(chatId, sent.message_id);
-  }, Math.max(3, GROUP_PROMPT_DELETE_SECONDS) * 1000);
+function mainMenu() {
+  return { inline_keyboard: [
+    [{ text: '💰 Price', callback_data: 'price' }, { text: '📈 Chart', callback_data: 'chart' }],
+    [{ text: '🛒 Buy', callback_data: 'buy' }, { text: '📢 News', callback_data: 'news' }],
+    [{ text: '🌐 Website', url: data.website }, { text: '🐦 X', url: data.x }],
+    [{ text: '💎 Tokenomics', callback_data: 'tokenomics' }, { text: '🗺 Roadmap', callback_data: 'roadmap' }],
+    [{ text: '👥 Community', callback_data: 'community' }, { text: '❓ FAQ', callback_data: 'faq' }],
+    [{ text: '📞 Support', callback_data: 'support' }]
+  ]};
 }
+function adminMenu() {
+  return { inline_keyboard: [
+    [{ text: '🟢 Status', callback_data: 'admin_status' }, { text: '📜 Contract', callback_data: 'admin_contract' }],
+    [{ text: '⛓ Chain', callback_data: 'admin_chain' }, { text: '🛒 Buy Link', callback_data: 'admin_buy' }],
+    [{ text: '📈 Chart Link', callback_data: 'admin_chart' }, { text: '📢 News', callback_data: 'admin_news' }],
+    [{ text: '🌐 Website', callback_data: 'admin_website' }, { text: '🐦 X', callback_data: 'admin_x' }],
+    [{ text: '📊 Current Settings', callback_data: 'admin_settings' }]
+  ]};
+}
+function homeText() {
+  return `🚀 ${data.project}\n\nOfficial Project Bot\n\n🟢 Status: ${data.status}\n\nChoose an option below 👇`;
+}
+async function safeDelete(chatId, messageId) { try { await bot.deleteMessage(chatId, messageId); } catch (_) {} }
+async function sendPrivateMenu(userId) { return bot.sendMessage(userId, homeText(), { reply_markup: mainMenu(), disable_web_page_preview: true }); }
 
-async function handleGroupMessage(msg) {
-  if (!GROUP_SILENT_MODE) return false;
-
+bot.onText(/\/start|\/help|\/price|\/chart|\/buy|\/links|\/admin/, async (msg) => {
   const chatId = msg.chat.id;
+  const userId = msg.from.id;
   const text = msg.text || '';
-  const isCommand = text.startsWith('/');
-
-  if (isCommand) {
+  if (msg.chat.type !== 'private') {
     await safeDelete(chatId, msg.message_id);
-
-    // Telegram does not allow bots to force-open private chat.
-    // If the user has already opened the bot before, we send the menu privately.
-    // If not, we show a silent temporary button in the group and delete it automatically.
-    try {
-      await sendPrivateMenu(msg.from.id);
-    } catch (err) {
-      console.log('Private message not sent. User probably has not started the bot yet:', err.response?.body?.description || err.message);
-      await sendTemporaryOpenBotPrompt(chatId, msg.from.first_name);
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-bot.onText(/\/start(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-
-  await sendPrivateMenu(msg.chat.id);
-});
-
-bot.onText(/\/price(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-  await sendPrivateSection(msg.chat.id, 'price');
-});
-
-bot.onText(/\/chart(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-  await sendPrivateSection(msg.chat.id, 'chart');
-});
-
-bot.onText(/\/buy(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-  await sendPrivateSection(msg.chat.id, 'buy');
-});
-
-bot.onText(/\/links(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-  await sendPrivateSection(msg.chat.id, 'links');
-});
-
-bot.onText(/\/help(?:@\w+)?/i, async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-    return;
-  }
-  await sendPrivateSection(msg.chat.id, 'help');
-});
-
-bot.on('callback_query', async (query) => {
-  const msg = query.message;
-  const data = query.data;
-
-  if (msg && isGroup(msg.chat)) {
-    // If someone presses buttons on an old menu that exists in the group,
-    // remove that old menu and move the user to private chat silently.
-    await safeDelete(msg.chat.id, msg.message_id);
-
-    try {
-      await sendPrivateSection(query.from.id, data);
-      await bot.answerCallbackQuery(query.id, { text: 'Opened in private chat.' });
-    } catch (err) {
-      await sendTemporaryOpenBotPrompt(msg.chat.id, query.from.first_name);
-      await bot.answerCallbackQuery(query.id, {
-        text: 'Tap the Open Bot button in the group.',
-        show_alert: true
+    try { await sendPrivateMenu(userId); }
+    catch {
+      const sent = await bot.sendMessage(chatId, 'Open TRINTOPE Bot:', {
+        reply_markup: { inline_keyboard: [[{ text: '🚀 Open TRINTOPE Bot', url: `https://t.me/${(await bot.getMe()).username}` }]] },
+        disable_notification: true
       });
+      setTimeout(() => safeDelete(chatId, sent.message_id), 8000);
     }
     return;
   }
+  if (text.startsWith('/admin')) {
+    if (!isOwner(msg)) return bot.sendMessage(chatId, 'Admin access denied.');
+    return bot.sendMessage(chatId, '⚙️ TRINTOPE Admin Panel\n\nChoose what you want to update:', { reply_markup: adminMenu() });
+  }
+  if (text.startsWith('/price')) return bot.sendMessage(chatId, priceText(), { reply_markup: mainMenu() });
+  if (text.startsWith('/chart')) return bot.sendMessage(chatId, chartText(), { reply_markup: mainMenu() });
+  if (text.startsWith('/buy')) return bot.sendMessage(chatId, buyText(), { reply_markup: mainMenu() });
+  return sendPrivateMenu(chatId);
+});
 
-  try {
-    const text = sections[data] || homeText();
-    await bot.editMessageText(text, {
-      chat_id: msg.chat.id,
-      message_id: msg.message_id,
-      reply_markup: mainMenuKeyboard(),
-      disable_web_page_preview: true
-    });
-    await bot.answerCallbackQuery(query.id);
-  } catch (err) {
-    await bot.answerCallbackQuery(query.id);
-    console.log('Callback error:', err.response?.body?.description || err.message);
+function priceText(){ return data.contract === 'Coming soon' ? '💰 Token is not live yet.\n\nPrice tracking will become available after launch.' : `💰 Price\n\nChain: ${data.chain}\nContract: ${data.contract}\n\nAutomatic price tracking will be connected next.`; }
+function chartText(){ return data.chart ? `📈 Chart:\n${data.chart}` : '📈 Chart will be available after launch.'; }
+function buyText(){ return data.buy ? `🛒 Buy TRINTOPE:\n${data.buy}` : '🛒 Trading is not available yet.\n\nStay tuned.'; }
+function linksText(){ return `🔗 Official Links\n\n🌐 Website: ${data.website}\n🐦 X: ${data.x}\n⛓ Chain: ${data.chain}\n📜 Contract: ${data.contract}`; }
+
+bot.on('callback_query', async (q) => {
+  const chatId = q.message.chat.id;
+  const messageId = q.message.message_id;
+  if (q.message.chat.type !== 'private') { await safeDelete(chatId, messageId); return bot.answerCallbackQuery(q.id); }
+  const c = q.data;
+  const map = {
+    price: priceText(), chart: chartText(), buy: buyText(), news: `📢 News\n\n${data.news}`,
+    tokenomics: `💎 Tokenomics\n\n${data.tokenomics}`, roadmap: `🗺 Roadmap\n\n${data.roadmap}`,
+    community: linksText(), faq: `❓ FAQ\n\n${data.faq}`, support: `📞 Support\n\n${data.support}`
+  };
+  if (map[c]) {
+    await bot.editMessageText(map[c], { chat_id: chatId, message_id: messageId, reply_markup: mainMenu(), disable_web_page_preview: true }).catch(()=>{});
+    return bot.answerCallbackQuery(q.id);
+  }
+  if (c.startsWith('admin_')) {
+    if (!isOwner(q)) return bot.answerCallbackQuery(q.id, { text: 'Access denied', show_alert: true });
+    const key = c.replace('admin_', '');
+    if (key === 'settings') {
+      return bot.editMessageText(`⚙️ Current Settings\n\nStatus: ${data.status}\nChain: ${data.chain}\nContract: ${data.contract}\nBuy: ${data.buy || 'not set'}\nChart: ${data.chart || 'not set'}\nWebsite: ${data.website}\nX: ${data.x}`, { chat_id: chatId, message_id: messageId, reply_markup: adminMenu(), disable_web_page_preview: true });
+    }
+    const commands = { status:'/setstatus LIVE', contract:'/setcontract CONTRACT_ADDRESS', chain:'/setchain BSC', buy:'/setbuy https://...', chart:'/setchart https://...', news:'/setnews Your announcement', website:'/setwebsite https://...', x:'/setx https://x.com/...' };
+    await bot.sendMessage(chatId, `Send command:\n\n${commands[key] || '/admin'}`);
+    return bot.answerCallbackQuery(q.id);
   }
 });
 
+const setters = {
+  setstatus:'status', setcontract:'contract', setchain:'chain', setbuy:'buy', setchart:'chart', setnews:'news', setwebsite:'website', setx:'x', settokenomics:'tokenomics', setroadmap:'roadmap', setfaq:'faq', setsupport:'support'
+};
 bot.on('message', async (msg) => {
-  if (isGroup(msg.chat)) {
-    await handleGroupMessage(msg);
-  }
+  if (!msg.text || !msg.text.startsWith('/')) return;
+  const [cmdRaw, ...rest] = msg.text.split(' ');
+  const cmd = cmdRaw.slice(1).split('@')[0].toLowerCase();
+  if (!setters[cmd]) return;
+  if (msg.chat.type !== 'private') { await safeDelete(msg.chat.id, msg.message_id); return; }
+  if (!isOwner(msg)) return bot.sendMessage(msg.chat.id, 'Admin access denied.');
+  const value = rest.join(' ').trim();
+  if (!value) return bot.sendMessage(msg.chat.id, `Usage: /${cmd} value`);
+  data[setters[cmd]] = value;
+  saveData(data);
+  await bot.sendMessage(msg.chat.id, `✅ Updated: ${setters[cmd]}\n\n${value}`, { reply_markup: adminMenu(), disable_web_page_preview: true });
 });
 
-bot.on('polling_error', (err) => {
-  console.log('Polling error:', err.message);
-});
-
-console.log(`${PROJECT_NAME} bot v2.4 is running. Group silent mode: ${GROUP_SILENT_MODE}`);
+bot.on('polling_error', (err) => console.error('Polling error:', err.message));
+console.log('TRINTOPE Bot v2.5 admin started');
