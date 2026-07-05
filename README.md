@@ -1,90 +1,65 @@
-# TRINTOPE Telegram Bot v3.0 Final
+# TRINTOPE Telegram Bot v3.0 Final Fixed
 
-Финальная стабильная версия бота TRINTOPE после всех исправлений.
+This is the stable TRINTOPE bot version.
 
-## Что умеет
+## What is included
 
-- Работает в личке с пользователем.
-- В группе удаляет команды и не засоряет чат.
-- Если пользователь пишет команду в группе, бот пытается отправить меню в личку.
-- Красивое меню с кнопками.
-- Админ-панель `/admin` только для владельца/админов.
-- Управление через Telegram без GitHub/Railway:
-  - статус проекта;
-  - контракт токена;
-  - сеть;
-  - сайт;
-  - X;
-  - Buy link;
-  - Chart link;
-  - новости;
-  - roadmap;
-  - tokenomics;
-  - FAQ;
-  - support;
-  - community links;
-  - broadcast всем пользователям.
-- Команда `/myid` показывает Telegram ID.
-- Команда `/setcontract CONTRACT` сохраняет контракт.
+- Private user menu
+- Silent group behavior
+- `/myid`
+- `/admin`
+- Telegram admin panel
+- Edit status, contract, chain, website, X, buy link, chart link, news, roadmap, tokenomics, FAQ
+- Broadcast to bot users
+- User statistics
+- Postgres support through Railway `DATABASE_URL`
+- Local fallback store if database is unavailable
 
-## Railway Variables
+## Railway variables
 
-Обязательные:
-
-```env
-BOT_TOKEN=токен от BotFather
-OWNER_ID=твой Telegram ID числом
-```
-
-Желательно:
-
-```env
-DATABASE_URL=PostgreSQL URL от Railway
-```
-
-Дополнительно:
-
-```env
-ADMIN_IDS=123,456,789
-```
-
-## Важно для группы
-
-Чтобы бот удалял команды в группе, выдай ему права администратора:
-
-- Delete messages / Удалять сообщения
-
-## Проверка после загрузки
-
-1. Railway должен показать в логах:
+Required:
 
 ```text
-TRINTOPE Bot v3.0.0-final is running
+BOT_TOKEN=your BotFather token
+OWNER_ID=your Telegram numeric ID
 ```
 
-2. В личке бота:
+Optional:
 
 ```text
-/start
-/admin
+ADMIN_IDS=123456789,987654321
+GROUP_SILENT_MODE=true
+DATABASE_URL=Railway Postgres URL
+```
+
+## Admin commands
+
+```text
 /myid
-```
-
-3. В группе команда `/start` должна удаляться и не засорять чат.
-
-## Как добавить контракт после запуска токена
-
-В личке бота:
-
-```text
 /admin
+/settings
+/setcontract <contract>
+/setchain <network>
+/setbuy <url>
+/setchart <url>
+/setwebsite <url>
+/setx <url>
+/setstatus <status>
+/setnews <text>
 ```
 
-Нажать `🪙 Contract` и отправить адрес контракта.
+## Important
 
-Или командой:
+In Telegram group settings, give the bot admin permission:
 
 ```text
-/setcontract CONTRACT_ADDRESS
+Delete messages / Удалять сообщения
 ```
 
+This lets the bot remove group commands and keep the main group clean.
+
+## Expected Railway log
+
+```text
+TRINTOPE Bot v3.0.0-final-fixed is running.
+```
