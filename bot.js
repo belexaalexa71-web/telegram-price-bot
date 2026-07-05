@@ -8,7 +8,7 @@ const OWNER_SETUP_CODE = process.env.OWNER_SETUP_CODE || '';
 const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(x => x.trim()).filter(Boolean);
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const MENU_TTL_MS = Number(process.env.MENU_TTL_MS || 300000);
-const APP_VERSION = '0.2.0';
+const APP_VERSION = '0.2.1';
 
 if (!BOT_TOKEN) {
   console.error('Missing BOT_TOKEN');
@@ -186,6 +186,33 @@ const pendingEdit = new Map();
 const isPrivate = (ctx) => ctx.chat?.type === 'private';
 const userId = (ctx) => String(ctx.from?.id || '');
 
+const FIELD_LABELS = {
+  welcome: 'Welcome message',
+  news: 'News',
+  faq: 'FAQ',
+  whitepaper: 'Whitepaper',
+  roadmap: 'Roadmap',
+  tokenomics: 'Tokenomics',
+  contract: 'Contract',
+  chart: 'Chart link',
+  buy: 'Buy link',
+  website: 'Website',
+  x: 'X account',
+  telegram_group: 'Telegram Group',
+  telegram_channel: 'Telegram Channel',
+  status: 'Project status'
+};
+
+function statusIcon(status) {
+  const icons = { Development: '🟢', Testing: '🧪', Presale: '🟡', Live: '🚀', Building: '🛠' };
+  return icons[status] || '🟢';
+}
+function displayField(key) { return FIELD_LABELS[key] || key; }
+function fmtLog(log) {
+  const at = log.created_at ? new Date(log.created_at).toLocaleString() : (log.at ? new Date(log.at).toLocaleString() : '');
+  return `• ${at ? at + ' — ' : ''}${log.action}`;
+}
+
 async function safeDelete(ctx, chatId, messageId) {
   try { await ctx.telegram.deleteMessage(chatId, messageId); } catch (_) {}
 }
@@ -228,13 +255,14 @@ async function homeKeyboard(ctx) {
 }
 async function homeText() {
   const s = await allSettings();
-  return `🔷 TRINTOPE\n\n${s.welcome}\n\n🟢 Status: ${s.status}\nVersion: ${s.version}\n\nChoose an option below.`;
+  return `🔷 TRINTOPE\n\n${s.welcome}\n\n${statusIcon(s.status)} Status: ${s.status}\nVersion: ${APP_VERSION}\n\nChoose an option below.`;
 }
 function adminKeyboard() {
   return Markup.inlineKeyboard([
-    [btn('📢 Content', 'admin_content'), btn('🌐 Project', 'admin_project')],
+    [btn('📢 Content Manager', 'admin_content')],
+    [btn('🌐 Project Settings', 'admin_project')],
     [btn('📊 Analytics', 'admin_stats'), btn('⚙️ System', 'admin_system')],
-    [btn('⬅️ Back', 'home'), btn('❌ Close', 'close')]
+    [btn('🏠 Home', 'home'), btn('❌ Close', 'close')]
   ]);
 }
 async function groupCommand(ctx) {
@@ -294,7 +322,10 @@ bot.on('text', async (ctx) => {
   const value = ctx.message.text.trim();
   await setSetting(editKey, value, userId(ctx));
   pendingEdit.delete(userId(ctx));
-  await showMenu(ctx, `✅ Updated: ${editKey}\n\n${value}`, nav('admin'));
+  await showMenu(ctx, `✅ Saved: ${displayField(editKey)}\n\n${value}`, Markup.inlineKeyboard([
+    [btn('⬅️ Control Center', 'admin')],
+    [btn('❌ Close', 'close')]
+  ]));
 });
 
 bot.on('callback_query', async (ctx) => {
@@ -324,60 +355,72 @@ bot.on('callback_query', async (ctx) => {
   if (data === 'admin') {
     if (!(await requireOwner(ctx))) return;
     const stats = await getStats();
-    const logs = stats.logs.map(l => `• ${l.action}`).slice(0, 3).join('\n') || 'No recent actions.';
-    return showMenu(ctx, `🔒 TRINTOPE Control Center\n\nWelcome back, Owner.\n\nManage project content directly from Telegram.\n\nStorage: ${storageMode}\nVersion: ${APP_VERSION}\n\nRecent actions:\n${logs}`, adminKeyboard());
+    const logs = stats.logs.map(fmtLog).slice(0, 4).join('\n') || 'No recent actions.';
+    return showMenu(ctx, `🔒 TRINTOPE Control Center\n\nWelcome back, Owner.\n\nManage your project from Telegram without touching GitHub or Railway.\n\nVersion: ${APP_VERSION}\nStorage: ${storageMode}\nUsers: ${stats.users}\n\nRecent actions:\n${logs}`, adminKeyboard());
   }
   if (!(await isOwnerId(userId(ctx)))) return;
 
-  if (data === 'admin_content') return showMenu(ctx, `📢 Content\n\nWelcome:\n${s.welcome}\n\nNews:\n${s.news}\n\nFAQ:\n${s.faq}`, Markup.inlineKeyboard([
+  if (data === 'admin_content') return showMenu(ctx, `📢 Content Manager\n\nUpdate public text shown inside the bot.\n\nWelcome:\n${s.welcome}\n\nNews:\n${s.news}\n\nFAQ:\n${s.faq}`, Markup.inlineKeyboard([
     [btn('✏️ Welcome', 'edit:welcome'), btn('✏️ News', 'edit:news')],
     [btn('✏️ FAQ', 'edit:faq'), btn('📜 Whitepaper', 'edit:whitepaper')],
-    [btn('⬅️ Back', 'admin'), btn('❌ Close', 'close')]
+    [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]
   ]));
 
-  if (data === 'admin_project') return showMenu(ctx, `🌐 Project\n\nStatus: ${s.status}\nWebsite: ${s.website}\nX: ${s.x}\nGroup: ${s.telegram_group || 'Not set'}\nChannel: ${s.telegram_channel || 'Not set'}\n\nRoadmap:\n${s.roadmap}\n\nTokenomics:\n${s.tokenomics}`, Markup.inlineKeyboard([
+  if (data === 'admin_project') return showMenu(ctx, `🌐 Project Settings\n\n${statusIcon(s.status)} Status: ${s.status}\nWebsite: ${s.website}\nX: ${s.x}\nGroup: ${s.telegram_group || 'Not set'}\nChannel: ${s.telegram_channel || 'Not set'}\n\nRoadmap:\n${s.roadmap}\n\nTokenomics:\n${s.tokenomics}`, Markup.inlineKeyboard([
     [btn('🟢 Status', 'status_menu'), btn('🔗 Links', 'links_menu')],
     [btn('🗺 Roadmap', 'edit:roadmap'), btn('💎 Tokenomics', 'edit:tokenomics')],
     [btn('📄 Contract', 'edit:contract'), btn('📈 Chart', 'edit:chart')],
     [btn('🛒 Buy', 'edit:buy')],
-    [btn('⬅️ Back', 'admin'), btn('❌ Close', 'close')]
+    [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]
   ]));
 
   if (data === 'admin_stats') {
     const st = await getStats();
-    const logs = st.logs.map(l => `• ${l.action} ${l.created_at ? new Date(l.created_at).toLocaleString() : l.at || ''}`).join('\n') || 'No logs yet.';
-    return showMenu(ctx, `📊 Analytics\n\nUsers: ${st.users}\nOwners: ${st.owners}\nStorage: ${storageMode}\n\nLast actions:\n${logs}`, Markup.inlineKeyboard([[btn('🔄 Refresh', 'admin_stats')], [btn('⬅️ Back', 'admin'), btn('❌ Close', 'close')]]));
+    const logs = st.logs.map(fmtLog).join('\n') || 'No logs yet.';
+    return showMenu(ctx, `📊 Analytics\n\nUsers: ${st.users}\nOwners: ${st.owners}\nStorage: ${storageMode}\n\nLast actions:\n${logs}`, Markup.inlineKeyboard([[btn('🔄 Refresh', 'admin_stats')], [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]]));
   }
 
-  if (data === 'admin_system') return showMenu(ctx, `⚙️ System\n\nVersion: ${APP_VERSION}\nStorage: ${storageMode}\nMenu TTL: ${Math.round(MENU_TTL_MS / 1000)} sec`, Markup.inlineKeyboard([
-    [btn('🟢 Development', 'status:Development'), btn('🟡 Presale', 'status:Presale')],
-    [btn('🚀 Live', 'status:Live'), btn('🧪 Testing', 'status:Testing')],
-    [btn('⬅️ Back', 'admin'), btn('❌ Close', 'close')]
+  if (data === 'admin_system') return showMenu(ctx, `⚙️ System\n\nVersion: ${APP_VERSION}\nStorage: ${storageMode}\nMenu TTL: ${Math.round(MENU_TTL_MS / 1000)} sec\n\nUse this section for safe system-level changes.`, Markup.inlineKeyboard([
+    [btn('📋 View Logs', 'admin_stats')],
+    [btn('⬅️ Control Center', 'admin'), btn('❌ Close', 'close')]
   ]));
 
-  if (data === 'status_menu') return showMenu(ctx, '🟢 Project Status\n\nChoose current public status.', Markup.inlineKeyboard([
-    [btn('Development', 'status:Development'), btn('Testing', 'status:Testing')],
-    [btn('Presale', 'status:Presale'), btn('Live', 'status:Live')],
-    [btn('⬅️ Back', 'admin_project'), btn('❌ Close', 'close')]
+  if (data === 'status_menu') return showMenu(ctx, `🟢 Project Status\n\nCurrent status: ${s.status}\n\nChoose a new public status. You will be asked to confirm.`, Markup.inlineKeyboard([
+    [btn('Development', 'confirm_status:Development'), btn('Testing', 'confirm_status:Testing')],
+    [btn('Presale', 'confirm_status:Presale'), btn('Live', 'confirm_status:Live')],
+    [btn('⬅️ Project Settings', 'admin_project'), btn('❌ Close', 'close')]
   ]));
 
-  if (data === 'links_menu') return showMenu(ctx, '🔗 Links\n\nChoose what you want to update.', Markup.inlineKeyboard([
+  if (data === 'links_menu') return showMenu(ctx, '🔗 Official Links\n\nChoose what you want to update. These links are shown to users, so check them carefully.', Markup.inlineKeyboard([
     [btn('🌐 Website', 'edit:website'), btn('🐦 X', 'edit:x')],
     [btn('💬 Telegram Group', 'edit:telegram_group'), btn('📢 Telegram Channel', 'edit:telegram_channel')],
-    [btn('⬅️ Back', 'admin_project'), btn('❌ Close', 'close')]
+    [btn('⬅️ Project Settings', 'admin_project'), btn('❌ Close', 'close')]
   ]));
+
+  if (data.startsWith('confirm_status:')) {
+    const status = data.split(':')[1];
+    return showMenu(ctx, `⚠️ Confirm status change\n\nNew public status will be:\n${statusIcon(status)} ${status}\n\nThis will be visible to users.`, Markup.inlineKeyboard([
+      [btn('✅ Confirm', `status:${status}`)],
+      [btn('↩️ Cancel', 'status_menu'), btn('❌ Close', 'close')]
+    ]));
+  }
 
   if (data.startsWith('status:')) {
     const status = data.split(':')[1];
     await setSetting('status', status, userId(ctx));
-    return showMenu(ctx, `✅ Status updated\n\nCurrent status: ${status}`, nav('admin'));
+    return showMenu(ctx, `✅ Status updated\n\nCurrent status: ${statusIcon(status)} ${status}`, nav('admin_project'));
+  }
+
+  if (data === 'cancel_edit') {
+    pendingEdit.delete(userId(ctx));
+    return showMenu(ctx, '✅ Edit cancelled.', nav('admin'));
   }
 
   if (data.startsWith('edit:')) {
     const key = data.split(':')[1];
     if (!Object.hasOwn(DEFAULTS, key)) return;
     pendingEdit.set(userId(ctx), key);
-    return showMenu(ctx, `✏️ Edit ${key}\n\nSend the new value as your next message.\n\nIt will be saved and shown to users immediately.`, nav('admin'));
+    return showMenu(ctx, `✏️ Edit ${displayField(key)}\n\nSend the new value as your next message.\n\nTip: you can paste multiple lines for sections like Roadmap, FAQ or Tokenomics.`, Markup.inlineKeyboard([[btn('↩️ Cancel', 'cancel_edit'), btn('❌ Close', 'close')]]));
   }
 });
 

@@ -1,14 +1,22 @@
-# TRINTOPE Bot v0.2.0 CMS Foundation
+# TRINTOPE Bot v0.2.1 — Better Admin UX
 
-Stable core + Telegram Control Center.
+Stable Telegram Control Center with improved owner experience.
 
 ## What changed
 
-- Project settings can be edited directly from Telegram.
-- Supports PostgreSQL through `DATABASE_URL`.
-- Falls back to `data.json` if PostgreSQL is unavailable.
-- Stores owners, users, settings and logs.
-- Keeps groups clean: group commands are deleted and users are redirected to private chat.
+- Control Center layout improved.
+- Public status changes now require confirmation.
+- Editing screen has Cancel button.
+- Status uses clear icons.
+- Admin logs are easier to read.
+- Version updated to `0.2.1`.
+
+## What did not change
+
+- Core navigation.
+- Owner protection.
+- Group clean mode.
+- PostgreSQL/data.json storage behavior.
 
 ## Required Railway variables
 
@@ -22,12 +30,8 @@ Stable core + Telegram Control Center.
 
 Upload the full project to GitHub and wait for Railway to redeploy.
 
-Expected logs:
+Expected log:
 
 ```text
-✅ Connected to PostgreSQL
-✅ Database initialized
-✅ TRINTOPE Bot v0.2.0 launched
+✅ TRINTOPE Bot v0.2.1 launched
 ```
-
-If PostgreSQL is not reachable, the bot will still run using `data.json`.
