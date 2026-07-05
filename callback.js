@@ -2,6 +2,7 @@ import { nav } from '../keyboards/navigation.js';
 import { homeText, helpText } from '../keyboards/texts.js';
 import { store } from '../database/store.js';
 import { isOwner } from '../services/security.js';
+import { handleAdminCallback } from '../admin/router.js';
 
 async function edit(ctx, text, keyboard) {
   await ctx.editMessageText(text, { reply_markup: keyboard }).catch(async () => {
@@ -30,24 +31,6 @@ export async function callbackHandler(ctx) {
   if (data === 'help') return edit(ctx, helpText(), nav.main(isOwner(ctx)));
 
   if (data.startsWith('admin') || data.startsWith('set_status')) {
-    if (!isOwner(ctx)) return ctx.answerCbQuery('Access denied', { show_alert: true }).catch(() => {});
-    if (data === 'admin') return edit(ctx, '🔒 TRINTOPE Control Center\n\nWelcome back, Owner.\n\nManage the project from one place.', nav.admin());
-    if (data === 'admin_status') return edit(ctx, `🟢 Project Status\n\nCurrent: ${store.getSetting('status')}`, nav.status());
-    if (data.startsWith('set_status:')) {
-      const status = data.split(':')[1]; store.setSetting('status', status); store.log(ctx.from.id, `Status changed to ${status}`);
-      return edit(ctx, `✅ Status updated: ${status}`, nav.backAdmin());
-    }
-    if (data === 'admin_links') return edit(ctx, `🔗 Links\n\nWebsite:\n${store.getSetting('websiteUrl')}\n\nX:\n${store.getSetting('xUrl')}\n\nTo edit, send:\n/set_website URL\n/set_x URL`, nav.backAdmin());
-    if (data === 'admin_news') return edit(ctx, '📢 News\n\nTo edit, send:\n/set_news your text', nav.backAdmin());
-    if (data === 'admin_roadmap') return edit(ctx, '🗺 Roadmap\n\nTo edit, send:\n/set_roadmap your text', nav.backAdmin());
-    if (data === 'admin_tokenomics') return edit(ctx, '💎 Tokenomics\n\nTo edit, send:\n/set_tokenomics your text', nav.backAdmin());
-    if (data === 'admin_faq') return edit(ctx, '❓ FAQ\n\nTo edit, send:\n/set_faq your text', nav.backAdmin());
-    if (data === 'admin_stats') {
-      const s = store.stats(); return edit(ctx, `📊 Stats\n\nUsers: ${s.users}\nLogs: ${s.logs}\nStatus: ${s.status}`, nav.backAdmin());
-    }
-    if (data === 'admin_logs') {
-      const logs = store.logs().map(l => `${l.at.slice(0,16).replace('T',' ')} — ${l.action}`).join('\n') || 'No logs yet.';
-      return edit(ctx, `📜 Logs\n\n${logs}`, nav.backAdmin());
-    }
+    return handleAdminCallback(ctx, edit);
   }
 }

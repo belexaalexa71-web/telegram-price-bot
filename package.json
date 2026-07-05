@@ -1,10 +1,17 @@
 {
   "name": "trintope-bot",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "Official TRINTOPE Telegram bot",
   "main": "src/bot.js",
   "type": "module",
-  "scripts": {"start":"node src/bot.js"},
-  "dependencies": {"telegraf":"^4.16.3","dotenv":"^16.4.5"},
-  "engines": {"node": ">=18"}
+  "scripts": {
+    "start": "node src/bot.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
