@@ -1,23 +1,44 @@
-# TRINTOPE Telegram Bot v2.2
+# TRINTOPE Telegram Bot v2.3
 
-This version keeps group chats cleaner:
+This version keeps the main Telegram group clean.
 
-- Deletes slash commands in groups, such as `/start`, `/price`, `/help`.
-- Optionally auto-deletes the bot's own command replies in groups.
-- Keeps normal private chat behavior unchanged.
+## What changed
+
+- Commands in groups are deleted automatically.
+- The bot does not post menu replies in the group.
+- The bot tries to move users to private chat silently.
+- If users press buttons from old group menus, the old menu is removed.
+- All normal bot interaction happens in private messages.
 
 ## Required Railway variable
 
-`BOT_TOKEN=your_token_from_BotFather`
+```env
+BOT_TOKEN=your_token_from_BotFather
+```
 
-## Optional Railway variables
+## Recommended Railway variables
 
-`PROJECT_NAME=TRINTOPE`
-`WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/`
-`X_URL=https://x.com/AndrejK40133234`
-`DELETE_BOT_REPLIES_IN_GROUPS=true`
-`BOT_REPLY_DELETE_SECONDS=45`
+```env
+PROJECT_NAME=TRINTOPE
+WEBSITE_URL=https://ea32b09e.trintope-universe.pages.dev/
+X_URL=https://x.com/AndrejK40133234
+PROJECT_STATUS=Building
+GROUP_SILENT_MODE=true
+```
 
-## Important
+Optional later:
 
-In Telegram group settings, the bot must be an admin with **Delete messages** permission.
+```env
+CHART_URL=
+BUY_URL=
+TELEGRAM_GROUP_URL=
+TELEGRAM_CHANNEL_URL=
+```
+
+## Important Telegram permissions
+
+In your Telegram group, the bot must be an admin with:
+
+- Delete messages / Удалять сообщения
+
+Without this permission Telegram will not allow the bot to delete group commands or old bot menus.
